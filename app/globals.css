@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 240px;
+}
+
+html.dark {
+  --oop-node-interface-fill: #1e293b;
+  --oop-node-abstract-fill: #334155;
+  --oop-node-concrete-fill: #0f766e;
+  --oop-node-concrete-selected-fill: #065f46;
+  --oop-node-label-fill: #ffffff;
+  --oop-node-sub-fill: #6ee7b7;
+}
+
+html.light {
+  --oop-node-interface-fill: #f1f5f9;
+  --oop-node-abstract-fill: #e2e8f0;
+  --oop-node-concrete-fill: #d1fae5;
+  --oop-node-concrete-selected-fill: #a7f3d0;
+  --oop-node-label-fill: #0f172a;
+  --oop-node-sub-fill: #047857;
+}
+
+html.dark body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+}
+
+html.light body {
+  @apply bg-slate-100 text-slate-900 antialiased;
+}

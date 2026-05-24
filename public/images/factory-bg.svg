@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#sky)"/>
+  <rect x="0" y="520" width="1200" height="280" fill="#334155" opacity="0.6"/>
+  <rect x="80" y="280" width="120" height="240" fill="#475569" opacity="0.5"/>
+  <rect x="100" y="240" width="80" height="40" fill="#64748b" opacity="0.4"/>
+  <rect x="220" y="320" width="180" height="200" fill="#475569" opacity="0.55"/>
+  <rect x="250" y="260" width="40" height="80" fill="#64748b" opacity="0.45"/>
+  <rect x="310" y="260" width="40" height="80" fill="#64748b" opacity="0.45"/>
+  <rect x="430" y="200" width="200" height="320" fill="#475569" opacity="0.5"/>
+  <rect x="460" y="140" width="50" height="70" fill="#64748b" opacity="0.4"/>
+  <rect x="530" y="140" width="50" height="70" fill="#64748b" opacity="0.4"/>
+  <rect x="660" y="300" width="160" height="220" fill="#475569" opacity="0.55"/>
+  <rect x="860" y="250" width="220" height="270" fill="#475569" opacity="0.5"/>
+  <rect x="900" y="180" width="60" height="90" fill="#64748b" opacity="0.4"/>
+  <rect x="980" y="180" width="60" height="90" fill="#64748b" opacity="0.4"/>
+  <rect x="200" y="480" width="800" height="24" fill="#22c55e" opacity="0.15"/>
+  <circle cx="150" cy="120" r="40" fill="#fbbf24" opacity="0.08"/>
+</svg>
