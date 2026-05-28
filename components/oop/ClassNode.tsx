@@ -47,12 +47,19 @@ export default function ClassNode({
   const dash = node.kind === "interface" ? "6 4" : undefined;
   const strokeWidth = selected ? 3.5 : 2;
 
+  const hint =
+    node.kind === "concrete"
+      ? "실행"
+      : node.kind === "abstract"
+        ? "설명"
+        : "설명";
+
   return (
     <g
       className="cursor-pointer"
       role="button"
       tabIndex={0}
-      aria-label={`${node.label} 클래스`}
+      aria-label={`${node.label} 클래스 (${hint})`}
       onMouseEnter={() => onHover(node)}
       onMouseLeave={() => onHover(null)}
       onClick={() => onClick(node)}
@@ -127,7 +134,7 @@ export default function ClassNode({
         fontSize={10}
         fontWeight={500}
       >
-        process() ★
+        {node.kind === "concrete" ? "실행 가능" : "설명"}
       </text>
     </g>
   );

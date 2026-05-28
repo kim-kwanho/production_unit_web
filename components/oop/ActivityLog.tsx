@@ -28,6 +28,9 @@ export default function ActivityLog({
         <h3 className="text-xs font-medium text-slate-600 dark:text-slate-300">
           Activity Log
         </h3>
+        <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+          각 실행의 메시지는 process() 내부 발생 순서대로 기록되며, 실행 기록은 위→아래로 누적됩니다.
+        </p>
       </div>
       <div
         className="flex-1 overflow-y-auto p-2 font-mono text-[11px]"

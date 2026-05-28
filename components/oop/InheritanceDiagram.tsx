@@ -29,11 +29,19 @@ export default function InheritanceDiagram({
   );
 
   return (
-    <div className="relative flex h-full min-h-[calc(100vh-8rem)] flex-col rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50">
-      <h2 className="mb-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+    <div className="relative flex h-full min-h-[calc(100vh-8rem)] flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+      <h2 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
         상속 계층 다이어그램 — 노드 클릭으로 다형성 시연
       </h2>
-      <svg viewBox="0 0 680 360" className="h-[min(70vh,520px)] w-full">
+      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+        구현 클래스(아래 3개)를 선택한 뒤 우측에서{" "}
+        <code className="font-mono">process(item)</code>를 실행하세요. ADT/추상
+        클래스는 설명용입니다.
+      </p>
+      <svg
+        viewBox="0 0 680 360"
+        className="h-[min(70vh,520px)] w-full rounded-lg bg-slate-50/70 ring-1 ring-slate-200 dark:bg-slate-950/30 dark:ring-slate-800"
+      >
         <defs>
           <marker
             id="inherit-arrow"
@@ -78,7 +86,17 @@ export default function InheritanceDiagram({
       </svg>
 
       {hovered && (
-        <div className="pointer-events-none absolute left-4 top-14 max-w-md rounded-lg border border-slate-200 bg-white/95 p-3 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-950/95">
+        <div
+          className="pointer-events-none absolute z-20 max-w-md rounded-lg border border-slate-200 bg-white/95 p-3 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-950/95"
+          style={{
+            left: Math.min(
+              16 + hovered.x + hovered.width + 12,
+              // keep within container (approx)
+              16 + 680 - 320,
+            ),
+            top: Math.max(64, 16 + hovered.y - 6),
+          }}
+        >
           <p className="font-semibold text-emerald-700 dark:text-emerald-300">
             {hovered.label}
           </p>
@@ -94,10 +112,10 @@ export default function InheritanceDiagram({
           )}
           <p className="text-slate-500 dark:text-slate-400">
             {hovered.kind === "interface"
-              ? "ADT — 클릭 시 메서드 설명"
+              ? "ADT(인터페이스) — 설명 노드"
               : hovered.kind === "abstract"
-                ? "추상 클래스 — 클릭 시 설명"
-                : "구현 클래스 — 클릭 시 process() 실행"}
+                ? "추상 클래스 — 설명 노드"
+                : "구현 클래스 — 실행 노드 (우측에서 process() 실행)"}
           </p>
           <p className="mt-2 text-slate-500">메서드 (hover):</p>
           <ul className="mt-1 flex flex-wrap gap-2">

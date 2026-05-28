@@ -7,11 +7,12 @@ import { useSidebar } from "./SidebarContext";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", subtitle: "시작", Icon: IconHome },
+  { href: "/studio", label: "Studio", subtitle: "한 화면 시연", Icon: IconHome },
   { href: "/oop-lab", label: "OOP Lab", subtitle: "상속·다형성", Icon: IconOop },
   {
     href: "/dashboard",
     label: "Dashboard",
-    subtitle: "라인 시뮬",
+    subtitle: "라인 시뮬레이션",
     Icon: IconFactory,
   },
 ] as const;
