@@ -32,11 +32,5 @@ export type AddUnitKind = "conveyor" | "robot_arm" | "inspection";
 
 export type ConcreteUnitKind = "conveyor" | "robot_arm" | "inspection";
 
-export const DEMO_ITEMS: Record<ConcreteUnitKind, string> = {
-  conveyor: "P-JAM",
-  robot_arm: "P-HEAVY",
-  inspection: "P-DEFECT",
-};
-
 export const PRODUCT_PRESETS = ["P1", "P-JAM", "P-HEAVY", "P-DEFECT"] as const;
 export type ProductPreset = (typeof PRODUCT_PRESETS)[number];

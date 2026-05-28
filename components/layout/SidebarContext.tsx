@@ -24,7 +24,11 @@ function readExpanded(): boolean {
 }
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [expanded, setExpanded] = useState(readExpanded);
+  const [expanded, setExpanded] = useState(true);
+
+  useEffect(() => {
+    setExpanded(readExpanded());
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, expanded ? "1" : "0");

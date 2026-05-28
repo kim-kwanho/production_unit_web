@@ -7,23 +7,15 @@ import { createLogEntry, logFromProcess } from "@/domain/log";
 import { createOopLabFactory } from "@/domain/oopLabFactory";
 import type { IProductionUnit } from "@/domain/ProductionUnitADT";
 import {
-  DEMO_ITEMS,
+  NODE_DEMO_ITEMS,
+  NODE_INFO,
+  NODE_TO_UNIT,
+} from "@/components/oop/oopLabModel";
+import {
   PLANT_ENERGY_LIMIT,
-  type ConcreteUnitKind,
   type LogEntry,
   type ProductPreset,
 } from "@/domain/types";
-
-const NODE_TO_UNIT: Record<string, ConcreteUnitKind> = {
-  conveyor: "conveyor",
-  robot: "robot_arm",
-  inspection: "inspection",
-};
-
-const INFO_NODES: Record<string, string> = {
-  adt: "ProductionUnitADT — 추상 인터페이스. process(item) 등 5개 메서드 시그니처만 정의합니다.",
-  base: "ProductionUnit — 공통 구현. plant energy 한도(100), start/stop, 기본 process()를 제공합니다.",
-};
 
 export default function OopLabPage() {
   const [factory] = useState(() => createOopLabFactory());
@@ -68,7 +60,7 @@ export default function OopLabPage() {
   const handleNodeClick = (nodeId: string) => {
     setSelectedNodeId(nodeId);
 
-    const infoText = INFO_NODES[nodeId];
+    const infoText = NODE_INFO[nodeId];
     if (infoText) {
       appendLogs([createLogEntry(`ℹ ${infoText}`, "info")]);
       return;
@@ -76,7 +68,7 @@ export default function OopLabPage() {
 
     const kind = NODE_TO_UNIT[nodeId];
     if (!kind) return;
-    runProcess(nodeId, DEMO_ITEMS[kind]);
+    runProcess(nodeId, NODE_DEMO_ITEMS[kind]);
   };
 
   const handlePresetClick = (preset: ProductPreset) => {
@@ -96,19 +88,14 @@ export default function OopLabPage() {
   const handleStartSelected = () => {
     if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
       appendLogs([
-        createLogEntry(
-          "먼저 다이어그램에서 구현 클래스를 선택하세요.",
-          "warning",
-        ),
+        createLogEntry("먼저 다이어그램에서 구현 클래스를 선택하세요.", "warning"),
       ]);
       return;
     }
     const unit = getUnitForNode(selectedNodeId);
     if (!unit) return;
     unit.start();
-    appendLogs([
-      createLogEntry(`[${unit.deviceId}] 가동 시작`, "success"),
-    ]);
+    appendLogs([createLogEntry(`[${unit.deviceId}] 가동 시작`, "success")]);
     setRenderVersion((n) => n + 1);
   };
 
@@ -160,3 +147,4 @@ export default function OopLabPage() {
     </div>
   );
 }
+

@@ -91,40 +91,45 @@ export class ProductionUnit implements IProductionUnit {
 
   process(item: string): ProcessResult {
     if (this._status !== RUNNING) {
-      return {
-        ok: false,
-        messages: [
-          processMsg(
-            `  [${this._deviceId}] 가동 중이 아니어서 '${item}' 처리하지 않음.`,
-            "warning",
-          ),
-        ],
-      };
+      return this.blockedResult(
+        `가동 중이 아니어서 '${item}' 처리하지 않음.`,
+        "warning",
+      );
     }
 
     const step = this.energyForOneProcess();
 
     if (!this.plantEnergy.canAfford(step)) {
-      return {
-        ok: false,
-        messages: [
-          processMsg(
-            `  [${this._deviceId}] 공장 에너지 한도(${PLANT_ENERGY_LIMIT}) 초과로 '${item}' 처리를 취소합니다. ` +
-              `(현재 ${this.plantEnergy.total.toFixed(1)}/${PLANT_ENERGY_LIMIT.toFixed(1)}, 필요 ${step.toFixed(1)})`,
-            "error",
-          ),
-        ],
-      };
+      return this.blockedResult(
+        `공장 에너지 한도(${PLANT_ENERGY_LIMIT}) 초과로 '${item}' 처리를 취소합니다. ` +
+          `(현재 ${this.plantEnergy.total.toFixed(1)}/${PLANT_ENERGY_LIMIT.toFixed(1)}, 필요 ${step.toFixed(1)})`,
+        "error",
+      );
     }
 
     this._processedCount += 1;
     this.plantEnergy.add(step);
-    const rem = this.plantEnergy.remaining;
+    return this.completedResult(item);
+  }
+
+  private blockedResult(
+    reason: string,
+    level: "warning" | "error",
+  ): ProcessResult {
+    return {
+      ok: false,
+      messages: [
+        processMsg(`  [${this._deviceId}] ${reason}`, level),
+      ],
+    };
+  }
+
+  private completedResult(item: string): ProcessResult {
     return {
       ok: true,
       messages: [
         processMsg(
-          `  [${this._deviceId}] '${item}' 완료 (공장 ${this.plantEnergy.total.toFixed(1)}/${PLANT_ENERGY_LIMIT.toFixed(0)}, 남음 ${rem.toFixed(1)})`,
+          `  [${this._deviceId}] '${item}' 완료 (공장 ${this.plantEnergy.total.toFixed(1)}/${PLANT_ENERGY_LIMIT.toFixed(0)}, 남음 ${this.plantEnergy.remaining.toFixed(1)})`,
           "success",
         ),
       ],
