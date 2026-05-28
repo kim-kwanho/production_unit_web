@@ -31,3 +31,25 @@ html.dark body {
 html.light body {
   @apply bg-slate-100 text-slate-900 antialiased;
 }
+
+/* Better defaults for forms/selection */
+::selection {
+  background: rgb(16 185 129 / 0.25);
+}
+
+/* Nicer scrollbars (Chromium/WebKit) */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.55);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+html.dark *::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85 / 0.8);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}

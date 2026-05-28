@@ -2,6 +2,7 @@
 
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { formatEnergy, formatPercent } from "@/lib/format";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface EfficiencyDonutProps {
   percent: number;
@@ -28,57 +29,59 @@ export default function EfficiencyDonut({
   const fillColor = energyAtLimit ? "#ef4444" : "#22c55e";
 
   return (
-    <div
-      className={`rounded-xl border p-4 ${
+    <Card
+      className={
         energyAtLimit
           ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30"
-          : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50"
-      }`}
+          : undefined
+      }
     >
-      <h2 className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-        공장 효율
-      </h2>
-      <div className="relative h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              innerRadius={55}
-              outerRadius={75}
-              startAngle={90}
-              endAngle={-270}
-              stroke="none"
+      <CardContent className="p-4">
+        <h2 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          공장 효율
+        </h2>
+        <div className="relative h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                innerRadius={55}
+                outerRadius={75}
+                startAngle={90}
+                endAngle={-270}
+                stroke="none"
+              >
+                <Cell fill={fillColor} />
+                <Cell fill="#cbd5e1" className="dark:fill-slate-700" />
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span
+              className={`text-2xl font-bold ${
+                energyAtLimit
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-slate-900 dark:text-white"
+              }`}
             >
-              <Cell fill={fillColor} />
-              <Cell fill="#cbd5e1" className="dark:fill-slate-700" />
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span
-            className={`text-2xl font-bold ${
-              energyAtLimit
-                ? "text-red-600 dark:text-red-400"
-                : "text-slate-900 dark:text-white"
-            }`}
-          >
-            {formatPercent(percent)}
-          </span>
-          <span
-            className={`text-xs ${
-              energyAtLimit
-                ? "text-red-600 dark:text-red-400"
-                : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            완제품 {finished} / 에너지 {formatEnergy(plant)}
-          </span>
+              {formatPercent(percent)}
+            </span>
+            <span
+              className={`text-xs ${
+                energyAtLimit
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-slate-500 dark:text-slate-400"
+              }`}
+            >
+              완제품 {finished} / 에너지 {formatEnergy(plant)}
+            </span>
+          </div>
         </div>
-      </div>
-      <p className="mt-2 text-center text-xs text-slate-500">
-        min(100, (완제품/에너지)×1000) · 라인 상 검사기 합산
-      </p>
-    </div>
+        <p className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
+          min(100, (완제품/에너지)×1000) · 라인 상 검사기 합산
+        </p>
+      </CardContent>
+    </Card>
   );
 }

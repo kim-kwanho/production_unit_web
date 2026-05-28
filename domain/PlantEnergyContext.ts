@@ -28,6 +28,10 @@ export class PlantEnergyContext {
     this._total += step;
   }
 
+  remove(step: number): void {
+    this._total = Math.max(0, this._total - step);
+  }
+
   reset(): void {
     this._total = 0;
   }
