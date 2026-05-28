@@ -39,10 +39,10 @@ export default function ClassNode({
   const stroke = selected
     ? "#22c55e"
     : node.kind === "interface"
-      ? "#94a3b8"
-      : node.kind === "abstract"
-        ? "#64748b"
-        : "#10b981";
+        ? "#94a3b8"
+        : node.kind === "abstract"
+          ? "#64748b"
+          : "#10b981";
 
   const dash = node.kind === "interface" ? "6 4" : undefined;
   const strokeWidth = selected ? 3.5 : 2;

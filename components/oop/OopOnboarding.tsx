@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 const STORAGE_KEY = "sf-oop-onboarding-done";
 
 const STEPS = [
-  "① 구현 클래스를 클릭하세요 (정지 상태면 경고 로그가 나옵니다).",
-  "② 필요하면 「가동」 버튼으로 유닛을 켠 뒤 process() 결과를 확인하세요.",
+  "① 구현 클래스를 클릭하면 오버라이딩된 process()가 바로 실행됩니다.",
+  "② 정지/가동 버튼으로 상태에 따른 base process() 처리도 비교할 수 있습니다.",
   "③ 프리셋 칩(P-JAM 등)으로 다른 제품을 실험해 보세요.",
 ];
 

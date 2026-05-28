@@ -5,6 +5,7 @@ import EfficiencyDonut from "@/components/dashboard/EfficiencyDonut";
 import MessageLog from "@/components/dashboard/MessageLog";
 import PixelLineMap from "@/components/dashboard/PixelLineMap";
 import UnitControlPanel from "@/components/dashboard/UnitControlPanel";
+import { Button } from "@/components/ui/button";
 import {
   computeEfficiencyScore,
   createDashboardFactory,
@@ -146,16 +147,12 @@ export default function DashboardPage() {
       <header className="mb-4 flex items-start justify-between">
         <div>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            라인 시뮬레이션 — 픽셀 맵 · 효율 · 파이프라인 로그
+            Factory Dashboard — 생산 라인 상태와 처리 결과를 한 화면에서 확인합니다.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-        >
+        <Button variant="secondary" onClick={handleReset}>
           세션 리셋
-        </button>
+        </Button>
       </header>
 
       <PixelLineMap line={factory.line} lastFailedUnitId={lastFailedUnitId} />

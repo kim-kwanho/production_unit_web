@@ -1,7 +1,7 @@
 # Smart Factory OOP
 
 과제 1 Python OOP 도메인을 TypeScript로 포팅한 Next.js 웹 앱입니다.  
-**OOP Lab**(상속·다형성)과 **Factory Dashboard**(라인 시뮬레이션) 두 화면을 제공합니다.
+**OOP Lab**에서 상속 구조와 오버라이딩된 `process()` 다형성을 시각적으로 확인할 수 있습니다. **Factory Dashboard**는 생산 라인 상태를 확인하는 보조 화면입니다.
 
 과제 1 Python 프로젝트: [`../production_unit_project`](../production_unit_project)
 
@@ -24,7 +24,7 @@ npm run dev
 |------|------|
 | `/` | 랜딩 — OOP Lab / Dashboard 선택 |
 | `/oop-lab` | 상속 다이어그램, `process()` 다형성, Activity Log |
-| `/dashboard` | 픽셀 라인맵, 파이프라인, 효율 도넛 |
+| `/dashboard` | 생산 라인 상태, 파이프라인 로그, 효율 도넛 |
 
 ## 프로덕션 빌드
 
@@ -46,13 +46,13 @@ production_unit_web/
 
 ## OOP Lab 사용법
 
-1. **구현 클래스** 노드를 클릭 → `process()` 실행 (정지 상태면 경고 로그, Python과 동일).
-2. **가동** 버튼으로 선택 유닛을 켠 뒤 다시 클릭/프리셋으로 성공 시나리오를 볼 수 있습니다.
+1. **구현 클래스** 노드를 클릭 → 오버라이딩된 `process()`가 즉시 실행되어 클래스별 결과가 로그에 표시됩니다.
+2. **정지/가동** 버튼으로 선택 유닛의 상태를 바꾼 뒤 base `process()` 경고와 성공 시나리오를 비교할 수 있습니다.
 3. **ADT / ProductionUnit** 클릭 → 설명 로그만 (process 없음).
 4. **프리셋 칩**(P1, P-JAM, …) → 구현 클래스 선택 후 다른 item 테스트.
 5. **세션 리셋** → 에너지·로그 초기화.
 
-## Factory Dashboard 사용법
+## Dashboard 보조 화면
 
 1. **Start All**으로 라인 가동 (에너지 한도 도달 시 비활성).
 2. 프리셋 또는 직접 입력 후 **Run Pipeline**.
@@ -60,11 +60,15 @@ production_unit_web/
 4. **세션 리셋** — 에너지·통계 초기화 + 라인을 CV-01·RA-01·INSP-01으로 복원.
 5. 픽셀 맵: 초록=가동, 노랑=정지, 빨강=마지막 실패 유닛.
 
-## 제출 PDF 캡처 체크리스트 (OOP Lab)
+## 제출 문서 체크리스트
 
-1. `/oop-lab` — ConveyorBeltUnit 클릭 후 Activity Log (JAM 등).
-2. 같은 화면 — **가동** 후 P1 또는 성공 로그 1장.
-3. Vercel URL + GitHub repo URL.
+1. 학번, 이름, 소속 분반.
+2. GitHub public repository URL.
+3. Vercel 배포 URL.
+4. 구현 설명: `ProductionUnitADT → ProductionUnit → ConveyorBeltUnit/RobotArmUnit/InspectionUnit`.
+5. `/oop-lab` 초기 화면 스크린샷.
+6. 구현 클래스 클릭 후 Activity Log 스크린샷.
+7. 수행 소감 2~3줄.
 
 ## Vercel 배포 (과제 제출)
 

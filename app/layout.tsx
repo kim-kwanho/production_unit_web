@@ -16,7 +16,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="dark" suppressHydrationWarning>
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("sf-oop-theme");var m=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)");var s=m&&m.matches?"dark":"light";var a=t==="light"||t==="dark"||t==="auto"?t:"auto";var r=a==="auto"?s:a;document.documentElement.classList.remove("light","dark");document.documentElement.classList.add(r);}catch(e){document.documentElement.classList.add("dark");}})();`,
+          }}
+        />
+      </head>
       <body>
         <Providers>
           <SidebarProvider>

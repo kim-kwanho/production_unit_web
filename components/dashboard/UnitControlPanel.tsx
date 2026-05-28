@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProductionUnit } from "@/domain/ProductionUnit";
+import { Button } from "@/components/ui/button";
 import {
   LINE_MAX,
   PRODUCT_PRESETS,
@@ -61,8 +62,7 @@ export default function UnitControlPanel({
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <button
-          type="button"
+        <Button
           onClick={onStartAll}
           disabled={energyAtLimit}
           title={
@@ -70,17 +70,18 @@ export default function UnitControlPanel({
               ? "공장 에너지 한도에 도달했습니다"
               : "전체 유닛 가동"
           }
-          className="rounded-lg bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+          variant="primary"
+          size="sm"
         >
           Start All
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           onClick={onStopAll}
-          className="rounded-lg bg-amber-700 px-3 py-1.5 text-sm text-white hover:bg-amber-600"
+          variant="secondary"
+          size="sm"
         >
           Stop All
-        </button>
+        </Button>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -94,14 +95,14 @@ export default function UnitControlPanel({
           <option value="robot_arm">로봇암</option>
           <option value="inspection">검사기</option>
         </select>
-        <button
-          type="button"
+        <Button
           onClick={onAddUnit}
           disabled={!canAddUnit}
-          className="rounded-lg bg-slate-600 px-3 py-2 text-sm text-white hover:bg-slate-500 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-slate-700 dark:hover:bg-slate-600"
+          variant="secondary"
+          size="md"
         >
           + 유닛 추가
-        </button>
+        </Button>
         <span className="text-xs text-slate-500">
           {line.length}/{LINE_MAX}칸
         </span>
@@ -139,8 +140,7 @@ export default function UnitControlPanel({
           placeholder="제품 ID 직접 입력 (예: P1)"
           className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
         />
-        <button
-          type="button"
+        <Button
           onClick={onRunPipeline}
           disabled={energyAtLimit}
           title={
@@ -148,10 +148,11 @@ export default function UnitControlPanel({
               ? "공장 에너지 한도에 도달했습니다"
               : "라인 파이프라인 실행"
           }
-          className="rounded-lg bg-blue-700 px-4 py-2 text-sm text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+          variant="primary"
+          size="md"
         >
           Run Pipeline
-        </button>
+        </Button>
       </div>
 
       {energyAtLimit && (
@@ -182,7 +183,7 @@ export default function UnitControlPanel({
                 type="button"
                 onClick={() => onUnitCountChange(unit.deviceId, -1)}
                 disabled={unit.unitCount <= UNIT_COUNT_MIN}
-                className="rounded bg-slate-200 px-2 py-1 text-sm disabled:opacity-40 dark:bg-slate-800"
+                className="rounded bg-slate-200 px-2 py-1 text-sm font-semibold disabled:opacity-40 dark:bg-slate-800"
               >
                 −
               </button>
@@ -193,7 +194,7 @@ export default function UnitControlPanel({
                 type="button"
                 onClick={() => onUnitCountChange(unit.deviceId, 1)}
                 disabled={unit.unitCount >= UNIT_COUNT_MAX}
-                className="rounded bg-slate-200 px-2 py-1 text-sm disabled:opacity-40 dark:bg-slate-800"
+                className="rounded bg-slate-200 px-2 py-1 text-sm font-semibold disabled:opacity-40 dark:bg-slate-800"
               >
                 +
               </button>

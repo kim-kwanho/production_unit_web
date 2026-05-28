@@ -2,102 +2,7 @@
 
 import { useMemo, useState } from "react";
 import ClassNode, { type ClassNodeData } from "./ClassNode";
-
-const NODES: ClassNodeData[] = [
-  {
-    id: "adt",
-    label: "ProductionUnitADT",
-    kind: "interface",
-    methods: [
-      { name: "start" },
-      { name: "stop" },
-      { name: "process", overridden: true },
-      { name: "efficiency" },
-      { name: "info" },
-    ],
-    x: 200,
-    y: 20,
-    width: 220,
-    height: 72,
-  },
-  {
-    id: "base",
-    label: "ProductionUnit",
-    kind: "abstract",
-    methods: [
-      { name: "start" },
-      { name: "stop" },
-      { name: "process", overridden: true },
-      { name: "efficiency" },
-      { name: "info" },
-    ],
-    x: 200,
-    y: 130,
-    width: 220,
-    height: 72,
-  },
-  {
-    id: "conveyor",
-    label: "ConveyorBeltUnit",
-    kind: "concrete",
-    stationType: "conveyor",
-    deviceId: "CV-01",
-    methods: [
-      { name: "start" },
-      { name: "stop" },
-      { name: "process", overridden: true },
-      { name: "efficiency" },
-      { name: "info" },
-    ],
-    x: 20,
-    y: 260,
-    width: 200,
-    height: 82,
-  },
-  {
-    id: "robot",
-    label: "RobotArmUnit",
-    kind: "concrete",
-    stationType: "robot_arm",
-    deviceId: "RA-01",
-    methods: [
-      { name: "start" },
-      { name: "stop" },
-      { name: "process", overridden: true },
-      { name: "efficiency" },
-      { name: "info" },
-    ],
-    x: 240,
-    y: 260,
-    width: 200,
-    height: 82,
-  },
-  {
-    id: "inspection",
-    label: "InspectionUnit",
-    kind: "concrete",
-    stationType: "inspection",
-    deviceId: "INSP-01",
-    methods: [
-      { name: "start" },
-      { name: "stop" },
-      { name: "process", overridden: true },
-      { name: "efficiency" },
-      { name: "info" },
-    ],
-    x: 460,
-    y: 260,
-    width: 200,
-    height: 82,
-  },
-];
-
-const EDGES = [
-  { from: "adt", to: "base" },
-  { from: "base", to: "conveyor" },
-  { from: "base", to: "robot" },
-  { from: "base", to: "inspection" },
-];
+import { GENERALIZATION_EDGES, OOP_CLASS_NODES } from "./oopLabModel";
 
 interface InheritanceDiagramProps {
   selectedNodeId: string | null;
@@ -119,7 +24,7 @@ export default function InheritanceDiagram({
   const [hovered, setHovered] = useState<ClassNodeData | null>(null);
 
   const nodeMap = useMemo(
-    () => Object.fromEntries(NODES.map((n) => [n.id, n])),
+    () => Object.fromEntries(OOP_CLASS_NODES.map((n) => [n.id, n])),
     [],
   );
 
@@ -132,22 +37,27 @@ export default function InheritanceDiagram({
         <defs>
           <marker
             id="inherit-arrow"
-            markerWidth="10"
-            markerHeight="10"
-            refX="5"
-            refY="5"
+            markerWidth="12"
+            markerHeight="12"
+            refX="10"
+            refY="6"
             orient="auto"
           >
-            <path d="M0,0 L10,5 L0,10 Z" fill="#22c55e" />
+            <path
+              d="M10,6 L1,1 L1,11 Z"
+              fill="var(--oop-node-abstract-fill)"
+              stroke="#22c55e"
+              strokeWidth="1.5"
+            />
           </marker>
         </defs>
-        {EDGES.map(({ from, to }) => {
-          const a = centerBottom(nodeMap[from]);
-          const b = centerTop(nodeMap[to]);
+        {GENERALIZATION_EDGES.map(({ subclass, superclass }) => {
+          const a = centerTop(nodeMap[subclass]);
+          const b = centerBottom(nodeMap[superclass]);
           const midY = (a.y + b.y) / 2;
           return (
             <path
-              key={`${from}-${to}`}
+              key={`${subclass}-${superclass}`}
               d={`M ${a.x} ${a.y} V ${midY} H ${b.x} V ${b.y}`}
               fill="none"
               stroke="#22c55e"
@@ -156,7 +66,7 @@ export default function InheritanceDiagram({
             />
           );
         })}
-        {NODES.map((node) => (
+        {OOP_CLASS_NODES.map((node) => (
           <ClassNode
             key={node.id}
             node={node}
