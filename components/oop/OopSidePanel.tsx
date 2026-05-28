@@ -160,7 +160,7 @@ export default function OopSidePanel({
               title={!canControlUnit ? "먼저 구현 클래스를 선택하세요" : undefined}
               className="flex-1"
             >
-              process("{selectedPreset}") 실행
+              process(&quot;{selectedPreset}&quot;) 실행
             </Button>
             <Button
               onClick={onRunDemo}
