@@ -23,10 +23,12 @@ export class InspectionUnit extends ProductionUnit {
   }
 
   process(item: string): ProcessResult {
+    // 1. 가동 상태 검사 — 정지 중이면 base 경고 반환
     if (this.status !== RUNNING) {
       return super.process(item);
     }
-    if (typeof item === "string" && item.includes("DEFECT")) {
+    // 2. 도메인 예외 — 불량 감지
+    if (item.includes("DEFECT")) {
       return {
         ok: false,
         messages: [
@@ -37,6 +39,7 @@ export class InspectionUnit extends ProductionUnit {
         ],
       };
     }
+    // 3. 정상 처리 — 검사 메시지 + 에너지 소비(super)
     const messages = [
       processMsg(`  [${this.deviceId}] 검사기: '${item}' 품질 검사...`, "info"),
     ];

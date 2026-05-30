@@ -14,4 +14,6 @@ export interface IProductionUnit {
   process(item: string): ProcessResult;
   efficiency(): number;
   info(): string;
+  /** 세션 초기화 시 처리 카운터를 0으로 리셋 */
+  resetStats(): void;
 }

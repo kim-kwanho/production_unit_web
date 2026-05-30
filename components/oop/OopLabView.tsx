@@ -1,21 +1,29 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { appendLogEntries } from "@/lib/logBuffer";
+import ClickProcessHint from "@/components/oop/ClickProcessHint";
 import InheritanceDiagram from "@/components/oop/InheritanceDiagram";
 import OopSidePanel from "@/components/oop/OopSidePanel";
-import { createLogEntry, logFromProcess } from "@/domain/log";
-import { createOopLabFactory } from "@/domain/oopLabFactory";
-import type { IProductionUnit } from "@/domain/ProductionUnitADT";
 import {
-  NODE_DEMO_ITEMS,
+  applyRunToHoverHint,
+  buildHoverUnitHint,
+  type ClickHintAnchor,
+  type HintAnchorRect,
+  type NodeHoverEvent,
+} from "@/components/oop/oopClickHint";
+import { createLogEntry } from "@/domain/log";
+import { createOopLabFactory } from "@/domain/oopLabFactory";
+import {
+  NODE_CLICK_ITEM,
   NODE_INFO,
   NODE_TO_UNIT,
+  OOP_CLASS_NODES,
 } from "@/components/oop/oopLabModel";
-import {
-  PLANT_ENERGY_LIMIT,
-  type LogEntry,
-  type ProductPreset,
-} from "@/domain/types";
+import type { LogEntry, ProductPreset } from "@/domain/types";
+import { useOopLabProcess } from "@/hooks/useOopLabProcess";
+
+const WORKING_MS = 900;
 
 export default function OopLabView({
   compact = false,
@@ -28,107 +36,90 @@ export default function OopLabView({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<ProductPreset>("P1");
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [, setRenderVersion] = useState(0);
-
-  const snapshotUnit = useCallback((u: IProductionUnit) => {
-    const info = u.info();
-    const kv = Object.fromEntries(
-      info
-        .split(",")
-        .map((s) => s.trim())
-        .map((pair) => {
-          const i = pair.indexOf("=");
-          if (i < 0) return [pair, ""];
-          return [pair.slice(0, i), pair.slice(i + 1)];
-        }),
-    );
-    const toNum = (v: unknown) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    };
-
-    return {
-      deviceId: u.deviceId,
-      stationType: u.stationType,
-      processedCount: u.processedCount,
-      expEff: toNum(kv.exp_eff),
-    };
-  }, []);
-
-  const getUnitForNode = useCallback(
-    (nodeId: string): IProductionUnit | null => {
-      const kind = NODE_TO_UNIT[nodeId];
-      if (!kind) return null;
-      if (kind === "conveyor") return factory.units.conveyor;
-      if (kind === "robot_arm") return factory.units.robot;
-      return factory.units.inspection;
-    },
-    [factory],
-  );
+  const [renderVersion, setRenderVersion] = useState(0);
+  const [hoverHint, setHoverHint] = useState<ClickHintAnchor | null>(null);
+  const [workingNodeId, setWorkingNodeId] = useState<string | null>(null);
+  const workingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoveredNodeIdRef = useRef<string | null>(null);
 
   const appendLogs = useCallback((entries: LogEntry[]) => {
-    setLogs((prev) => [...prev, ...entries]);
+    setLogs((prev) => appendLogEntries(prev, entries));
   }, []);
 
-  const runProcess = useCallback(
-    (nodeId: string, item: string) => {
-      const unit = getUnitForNode(nodeId);
-      if (!unit) return;
-
-      const plantBefore = factory.plantEnergy.total;
-      const before = snapshotUnit(unit);
-      const result = unit.process(item);
-      const plantAfter = factory.plantEnergy.total;
-      const after = snapshotUnit(unit);
-
-      const processedDelta = after.processedCount - before.processedCount;
-      const energyDelta = plantAfter - plantBefore;
-
-      appendLogs([
-        createLogEntry(
-          `━━ 변화(diff): ${before.deviceId} (${before.stationType}) ━━`,
-          "info",
-        ),
-        createLogEntry(
-          `processed: ${before.processedCount} → ${after.processedCount} (${processedDelta >= 0 ? "+" : ""}${processedDelta})`,
-          processedDelta > 0 ? "success" : "info",
-        ),
-        createLogEntry(
-          `plant_energy: ${plantBefore.toFixed(1)} → ${plantAfter.toFixed(1)} (${energyDelta >= 0 ? "+" : ""}${energyDelta.toFixed(1)})`,
-          energyDelta > 0 ? "warning" : "info",
-        ),
-        createLogEntry(
-          `▶ ${unit.deviceId}.process("${item}") → ${result.ok ? "성공" : "실패"}`,
-          result.ok ? "success" : "error",
-        ),
-        ...logFromProcess(result.messages),
-      ]);
-      setRenderVersion((n) => n + 1);
-    },
-    [appendLogs, factory.plantEnergy, getUnitForNode, snapshotUnit],
+  const { getUnitForNode, runProcess } = useOopLabProcess(
+    factory,
+    appendLogs,
+    () => setRenderVersion((n) => n + 1),
   );
 
-  const handleNodeClick = (nodeId: string) => {
-    setSelectedNodeId(nodeId);
-
-    const infoText = NODE_INFO[nodeId];
-    if (infoText) {
-      appendLogs([createLogEntry(`ℹ ${infoText}`, "info")]);
-      onConcreteSelect?.(null);
-      return;
+  const flashWorking = useCallback((nodeId: string, ok: boolean) => {
+    if (!ok) return;
+    if (workingTimerRef.current) {
+      clearTimeout(workingTimerRef.current);
     }
+    setWorkingNodeId(nodeId);
+    workingTimerRef.current = setTimeout(() => {
+      setWorkingNodeId(null);
+      workingTimerRef.current = null;
+    }, WORKING_MS);
+  }, []);
 
-    const kind = NODE_TO_UNIT[nodeId];
-    if (!kind) return;
-    const unit = getUnitForNode(nodeId);
-    onConcreteSelect?.(unit?.deviceId ?? null);
-    appendLogs([
-      createLogEntry(
-        `선택됨: ${nodeId} — 우측에서 입력(item)을 선택하고 실행해 보세요.`,
-        "info",
-      ),
-    ]);
-  };
+  const runWithFeedback = useCallback(
+    (nodeId: string, item: string) => {
+      const outcome = runProcess(nodeId, item);
+      if (outcome && hoveredNodeIdRef.current === nodeId) {
+        setHoverHint((prev) =>
+          prev ? applyRunToHoverHint(prev, nodeId, outcome) : prev,
+        );
+      }
+      flashWorking(nodeId, outcome?.ok ?? false);
+      return outcome;
+    },
+    [flashWorking, runProcess],
+  );
+
+  const handleNodeHover = useCallback(
+    (nodeId: string, event: NodeHoverEvent, anchorRect: HintAnchorRect) => {
+      hoveredNodeIdRef.current = nodeId;
+      const hint = buildHoverUnitHint(nodeId, event, anchorRect);
+      if (hint) setHoverHint(hint);
+    },
+    [],
+  );
+
+  const handleNodeHoverEnd = useCallback((nodeId: string) => {
+    if (hoveredNodeIdRef.current === nodeId) {
+      hoveredNodeIdRef.current = null;
+      setHoverHint(null);
+    }
+  }, []);
+
+  const handleNodeClick = useCallback(
+    (nodeId: string | null) => {
+      if (nodeId === null) {
+        setSelectedNodeId(null);
+        hoveredNodeIdRef.current = null;
+        setHoverHint(null);
+        onConcreteSelect?.(null);
+        return;
+      }
+
+      setSelectedNodeId(nodeId);
+
+      const infoText = NODE_INFO[nodeId];
+      if (infoText) {
+        onConcreteSelect?.(null);
+        return;
+      }
+
+      const kind = NODE_TO_UNIT[nodeId];
+      if (!kind) return;
+      const unit = getUnitForNode(nodeId);
+      onConcreteSelect?.(unit?.deviceId ?? null);
+      runWithFeedback(nodeId, NODE_CLICK_ITEM);
+    },
+    [getUnitForNode, onConcreteSelect, runWithFeedback],
+  );
 
   const handlePresetClick = (preset: ProductPreset) => {
     setSelectedPreset(preset);
@@ -144,20 +135,17 @@ export default function OopLabView({
       ]);
       return;
     }
-    runProcess(selectedNodeId, selectedPreset);
+    const outcome = runProcess(selectedNodeId, selectedPreset);
+    flashWorking(selectedNodeId, outcome?.ok ?? false);
   };
 
-  const handleRunDemo = () => {
-    if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
-      appendLogs([
-        createLogEntry("먼저 다이어그램에서 구현 클래스를 선택하세요.", "warning"),
-      ]);
-      return;
-    }
-    const kind = NODE_TO_UNIT[selectedNodeId];
-    if (!kind) return;
-    runProcess(selectedNodeId, NODE_DEMO_ITEMS[kind]);
-  };
+  const selectedUnit = useMemo(() => {
+    void renderVersion;
+    if (!selectedNodeId) return null;
+    return getUnitForNode(selectedNodeId);
+  }, [getUnitForNode, selectedNodeId, renderVersion]);
+
+  const selectedUnitStatus = selectedUnit?.status ?? null;
 
   const handleStartSelected = () => {
     if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
@@ -184,53 +172,76 @@ export default function OopLabView({
 
   const handleReset = () => {
     if (!window.confirm("OOP Lab 세션을 리셋하시겠습니까?")) return;
+    if (workingTimerRef.current) clearTimeout(workingTimerRef.current);
     factory.reset();
     setLogs([]);
     setSelectedNodeId(null);
+    setHoverHint(null);
+    hoveredNodeIdRef.current = null;
+    setWorkingNodeId(null);
     onConcreteSelect?.(null);
     setRenderVersion((n) => n + 1);
   };
 
-  const selectedUnit = selectedNodeId ? getUnitForNode(selectedNodeId) : null;
+  const selectedNode = useMemo(
+    () => OOP_CLASS_NODES.find((n) => n.id === selectedNodeId) ?? null,
+    [selectedNodeId],
+  );
   const canControlUnit = Boolean(selectedNodeId && NODE_TO_UNIT[selectedNodeId]);
 
   return (
     <div
       className={
         compact
-          ? "flex h-full flex-col p-3"
-          : "flex h-full flex-col p-4 lg:p-6"
+          ? "flex h-full min-h-0 flex-col overflow-hidden p-3"
+          : "flex h-full min-h-0 flex-col overflow-hidden p-3 lg:p-4"
       }
     >
+      <ClickProcessHint
+        hint={hoverHint}
+        autoDismissMs={null}
+        onDismiss={() => {
+          hoveredNodeIdRef.current = null;
+          setHoverHint(null);
+        }}
+      />
+
       {!compact && (
-        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-          같은{" "}
-          <code className="text-emerald-600 dark:text-emerald-400">process()</code>{" "}
-          호출 — 클래스마다 다른 결과 (다형성)
+        <p className="mb-2 shrink-0 text-xs text-slate-600 dark:text-slate-400">
+          <strong>호버</strong>로 스펙 확인 · 초록 노드 <strong>클릭</strong> → P1{" "}
+          <code className="font-mono text-emerald-600 dark:text-emerald-400">process()</code>
+          (클릭 순서 자유 — 클래스별 차이 비교용). 실패 데모는 「추가 실험」.
+          공장 에너지 한도{" "}
+          <span className="font-mono">{factory.plantEnergy.limit.toLocaleString()}</span>
+          (대시보드 100과 별도).
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_minmax(280px,30%)]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[1fr_minmax(300px,36%)]">
         <InheritanceDiagram
           selectedNodeId={selectedNodeId}
+          workingNodeId={workingNodeId}
+          onNodeHover={handleNodeHover}
+          onNodeHoverEnd={handleNodeHoverEnd}
           onSelectNode={handleNodeClick}
+          compact={compact}
         />
         <OopSidePanel
           logs={logs}
           selectedPreset={selectedPreset}
-          selectedNodeLabel={selectedUnit?.deviceId ?? null}
+          selectedNode={selectedNode}
+          selectedUnitStatus={selectedUnitStatus}
           canControlUnit={canControlUnit}
+          onClearSelection={() => handleNodeClick(null)}
           onPresetClick={handlePresetClick}
           onRunSelected={handleRunSelected}
-          onRunDemo={handleRunDemo}
           onStartSelected={handleStartSelected}
           onStopSelected={handleStopSelected}
           onReset={handleReset}
-          plantEnergy={`${factory.plantEnergy.total.toFixed(1)} / ${PLANT_ENERGY_LIMIT}`}
+          plantEnergy={`${factory.plantEnergy.total.toFixed(1)} / ${factory.plantEnergy.limit}`}
           compact={compact}
         />
       </div>
     </div>
   );
 }
-

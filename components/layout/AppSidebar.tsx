@@ -7,7 +7,6 @@ import { useSidebar } from "./SidebarContext";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", subtitle: "시작", Icon: IconHome },
-  { href: "/studio", label: "Studio", subtitle: "한 화면 시연", Icon: IconHome },
   { href: "/oop-lab", label: "OOP Lab", subtitle: "상속·다형성", Icon: IconOop },
   {
     href: "/dashboard",
@@ -62,6 +61,7 @@ export default function AppSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               title={!expanded ? item.label : undefined}
               className={`flex items-center gap-3 rounded-lg transition-colors ${
                 expanded ? "px-3 py-3" : "justify-center p-2.5"

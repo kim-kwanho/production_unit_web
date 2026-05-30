@@ -2,7 +2,11 @@ import { processMsg } from "./message";
 import type { IProductionUnit } from "./ProductionUnitADT";
 import type { ProcessResult } from "./types";
 
-function printBlocked(unit: IProductionUnit, item: string): ProcessResult {
+/** 상류 실패로 process() 없이 차단된 결과 (UI·파이프라인 공용) */
+export function blockedProcessResult(
+  unit: IProductionUnit,
+  item: string,
+): ProcessResult {
   return {
     ok: false,
     messages: [
@@ -25,7 +29,7 @@ export function processPipeline(
 
   for (const unit of line) {
     if (!upstreamOk) {
-      results.push(printBlocked(unit, item));
+      results.push(blockedProcessResult(unit, item));
       continue;
     }
 

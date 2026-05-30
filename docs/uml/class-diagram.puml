@@ -1,0 +1,49 @@
+@startuml production-unit-class-diagram
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+
+interface ProductionUnitADT {
+  +start()
+  +stop()
+  +process(item: string): ProcessResult
+  +efficiency(): number
+  +info(): string
+}
+
+abstract class ProductionUnit {
+  #unitCount: number
+  #energyPerCycle: number
+  +start()
+  +stop()
+  +process(item: string): ProcessResult
+  +efficiency(): number
+  +info(): string
+}
+
+class ConveyorBeltUnit {
+  +process(item: string): ProcessResult
+}
+
+class RobotArmUnit {
+  +process(item: string): ProcessResult
+}
+
+class InspectionUnit {
+  +process(item: string): ProcessResult
+}
+
+ProductionUnitADT <|.. ProductionUnit
+ProductionUnit <|-- ConveyorBeltUnit
+ProductionUnit <|-- RobotArmUnit
+ProductionUnit <|-- InspectionUnit
+
+note right of ProductionUnit
+  process() 기본 구현 제공
+  하위는 super.process() 호출
+end note
+
+note bottom of ConveyorBeltUnit
+  ★ process() 오버라이드
+end note
+
+@enduml

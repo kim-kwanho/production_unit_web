@@ -4,24 +4,39 @@
 
 :root {
   --sidebar-width: 240px;
+  --app-header-h: 3rem;
 }
 
 html.dark {
-  --oop-node-interface-fill: #1e293b;
-  --oop-node-abstract-fill: #334155;
+  --oop-node-interface-fill: #2e1065;
+  --oop-node-interface-stroke: #a78bfa;
+  --oop-node-abstract-fill: #1e3a8a;
+  --oop-node-abstract-stroke: #60a5fa;
   --oop-node-concrete-fill: #0f766e;
   --oop-node-concrete-selected-fill: #065f46;
   --oop-node-label-fill: #ffffff;
   --oop-node-sub-fill: #6ee7b7;
+  --oop-node-method-fill: #e2e8f0;
+  --oop-node-override-fill: #ecfdf5;
+  --oop-node-override-bg: rgba(16, 185, 129, 0.22);
+  --oop-node-override-border: #34d399;
+  --oop-node-divider: #64748b;
 }
 
 html.light {
-  --oop-node-interface-fill: #f1f5f9;
-  --oop-node-abstract-fill: #e2e8f0;
+  --oop-node-interface-fill: #ede9fe;
+  --oop-node-interface-stroke: #7c3aed;
+  --oop-node-abstract-fill: #dbeafe;
+  --oop-node-abstract-stroke: #2563eb;
   --oop-node-concrete-fill: #d1fae5;
-  --oop-node-concrete-selected-fill: #a7f3d0;
+  --oop-node-concrete-selected-fill: #6ee7b7;
   --oop-node-label-fill: #0f172a;
   --oop-node-sub-fill: #047857;
+  --oop-node-method-fill: #64748b;
+  --oop-node-override-fill: #065f46;
+  --oop-node-override-bg: #d1fae5;
+  --oop-node-override-border: #10b981;
+  --oop-node-divider: #cbd5e1;
 }
 
 html.dark body {
@@ -30,6 +45,21 @@ html.dark body {
 
 html.light body {
   @apply bg-slate-100 text-slate-900 antialiased;
+}
+
+@keyframes log-entry-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-log-entry {
+  animation: log-entry-in 0.3s ease-out;
 }
 
 /* Better defaults for forms/selection */

@@ -21,7 +21,11 @@ export interface LogEntry {
 export const RUNNING: UnitStatus = "running";
 export const STOPPED: UnitStatus = "stopped";
 
+/** Factory Dashboard — 라인 전체 공유 한도 */
 export const PLANT_ENERGY_LIMIT = 100;
+
+/** OOP Lab — 다형성·오버라이드 반복 실험용 (대시보드와 별도 컨텍스트) */
+export const OOP_LAB_PLANT_ENERGY_LIMIT = 10_000;
 
 export const UNIT_COUNT_MIN = 1;
 export const UNIT_COUNT_MAX = 10;

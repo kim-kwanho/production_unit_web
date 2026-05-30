@@ -1,7 +1,20 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import EfficiencyDonut from "@/components/dashboard/EfficiencyDonut";
+import { appendLogEntries } from "@/lib/logBuffer";
+
+const EfficiencyDonut = dynamic(
+  () => import("@/components/dashboard/EfficiencyDonut"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-32 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">
+        효율 차트 로딩…
+      </div>
+    ),
+  },
+);
 import MessageLog from "@/components/dashboard/MessageLog";
 import PixelLineMap from "@/components/dashboard/PixelLineMap";
 import UnitControlPanel from "@/components/dashboard/UnitControlPanel";
@@ -9,12 +22,15 @@ import DashboardOnboarding from "@/components/dashboard/DashboardOnboarding";
 import { Button } from "@/components/ui/button";
 import { createDashboardFactory } from "@/domain/dashboardFactory";
 import { createLogEntry, logFromProcess } from "@/domain/log";
+import { blockedProcessResult } from "@/domain/pipeline";
 import {
   PLANT_ENERGY_LIMIT,
+  RUNNING,
   UNIT_COUNT_MAX,
   UNIT_COUNT_MIN,
   type AddUnitKind,
   type LogEntry,
+  type ProcessResult,
 } from "@/domain/types";
 import { clampUnitCount } from "@/lib/format";
 
@@ -37,6 +53,9 @@ export default function DashboardView({
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   const [activeItemLabel, setActiveItemLabel] = useState<string | null>(null);
   const [activeProgress, setActiveProgress] = useState(0);
+  const [activePhase, setActivePhase] = useState<
+    "working" | "blocked" | "failed" | null
+  >(null);
   const [animating, setAnimating] = useState(false);
   const [runHistory, setRunHistory] = useState<
     { ts: number; energyUsed: number; finished: number }[]
@@ -65,7 +84,7 @@ export default function DashboardView({
   }, [runHistory]);
 
   const appendLogs = useCallback((entries: LogEntry[]) => {
-    setLogs((prev) => [...prev, ...entries]);
+    setLogs((prev) => appendLogEntries(prev, entries));
   }, []);
 
   const sleep = (ms: number) =>
@@ -77,6 +96,7 @@ export default function DashboardView({
     setActiveUnitId(null);
     setActiveItemLabel(null);
     setActiveProgress(0);
+    setActivePhase(null);
   }, []);
 
   const handleStartAll = () => {
@@ -89,6 +109,26 @@ export default function DashboardView({
     factory.line.forEach((u) => u.stop());
     appendLogs([createLogEntry("■ 전체 유닛 정지", "warning")]);
     setRenderVersion((n) => n + 1);
+  };
+
+  const animateWorkingProgress = async (runId: number) => {
+    if (compact) {
+      setActiveProgress(0.5);
+      await sleep(280);
+      if (runIdRef.current !== runId) return false;
+    } else {
+      setActiveProgress(0);
+      await sleep(120);
+      if (runIdRef.current !== runId) return false;
+      setActiveProgress(0.35);
+      await sleep(180);
+      if (runIdRef.current !== runId) return false;
+      setActiveProgress(0.7);
+      await sleep(220);
+      if (runIdRef.current !== runId) return false;
+    }
+    setActiveProgress(1);
+    return true;
   };
 
   const handleRunPipeline = async () => {
@@ -105,39 +145,63 @@ export default function DashboardView({
 
     const energyBefore = factory.plantEnergy.total;
     const finishedBefore = getFinishedOnLine();
-    let okAll = true;
+    let upstreamOk = true;
+    let failedUnitId: string | null = null;
 
     for (const unit of factory.line) {
       if (runIdRef.current !== runId) return;
       setActiveUnitId(unit.deviceId);
-      setActiveProgress(0);
 
-      await sleep(120);
-      if (runIdRef.current !== runId) return;
-      setActiveProgress(0.35);
-      await sleep(180);
-      if (runIdRef.current !== runId) return;
-      setActiveProgress(0.7);
-      await sleep(220);
-      if (runIdRef.current !== runId) return;
-      setActiveProgress(1);
+      let result: ProcessResult;
+      const pause = compact ? 120 : 180;
 
-      const result = unit.process(item);
-      appendLogs([...logFromProcess(result.messages)]);
+      if (!upstreamOk) {
+        setActivePhase("blocked");
+        setActiveProgress(0);
+        await sleep(pause);
+        if (runIdRef.current !== runId) return;
+        result = blockedProcessResult(unit, item);
+      } else if (unit.status !== RUNNING) {
+        setActivePhase("blocked");
+        setActiveProgress(0);
+        await sleep(pause);
+        if (runIdRef.current !== runId) return;
+        result = unit.process(item);
+        upstreamOk = false;
+        failedUnitId = unit.deviceId;
+        setLastFailedUnitId(failedUnitId);
+      } else {
+        setActivePhase("working");
+        setActiveProgress(0.1);
+        await sleep(compact ? 60 : 80);
+        if (runIdRef.current !== runId) return;
 
-      if (!result.ok) {
-        okAll = false;
-        setLastFailedUnitId(unit.deviceId);
-        break;
+        result = unit.process(item);
+
+        if (!result.ok) {
+          setActivePhase("failed");
+          setActiveProgress(0);
+          await sleep(compact ? 200 : 280);
+          if (runIdRef.current !== runId) return;
+          upstreamOk = false;
+          failedUnitId = unit.deviceId;
+          setLastFailedUnitId(failedUnitId);
+        } else {
+          const ok = await animateWorkingProgress(runId);
+          if (!ok) return;
+        }
       }
 
-      await sleep(220);
+      appendLogs([...logFromProcess(result.messages)]);
+
+      await sleep(pause);
     }
 
     const energyAfter = factory.plantEnergy.total;
     const finishedAfter = getFinishedOnLine();
     const energyUsed = Math.max(0, energyAfter - energyBefore);
     const finishedDelta = Math.max(0, finishedAfter - finishedBefore);
+    const okAll = failedUnitId === null;
 
     if (energyUsed > 0 || finishedDelta > 0) {
       setRunHistory((prev) => {
@@ -161,6 +225,7 @@ export default function DashboardView({
     setActiveUnitId(null);
     setActiveItemLabel(null);
     setActiveProgress(0);
+    setActivePhase(null);
     if (runIdRef.current !== runId) return;
     setAnimating(false);
     setRenderVersion((n) => n + 1);
@@ -229,64 +294,124 @@ export default function DashboardView({
   const [panel, setPanel] = useState<"control" | "metrics" | "log">("control");
 
   return (
-    <div className={compact ? "flex h-full flex-col p-3" : "flex h-full flex-col p-6"}>
-      {showOnboarding && <DashboardOnboarding />}
+    <div
+      className={
+        compact
+          ? "flex h-full min-h-0 flex-col overflow-hidden p-3"
+          : "flex h-full min-h-0 flex-col overflow-hidden p-3 lg:p-4"
+      }
+    >
       {!compact && (
-        <header className="mb-4 flex items-start justify-between">
-          <div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Factory Dashboard — 생산 라인 상태와 처리 결과를 한 화면에서 확인합니다.
-            </p>
+        <header className="relative z-20 mb-2 flex shrink-0 items-center justify-between gap-3">
+          <p className="min-w-0 text-xs text-slate-600 dark:text-slate-400">
+            Factory Dashboard — 생산 라인 상태와 처리 결과를 한 화면에서 확인합니다.
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            {showOnboarding && <DashboardOnboarding />}
+            <Button variant="secondary" size="sm" onClick={handleReset}>
+              세션 리셋
+            </Button>
           </div>
-          <Button variant="secondary" onClick={handleReset}>
-            세션 리셋
-          </Button>
         </header>
       )}
 
-      <PixelLineMap
-        line={factory.line}
-        lastFailedUnitId={lastFailedUnitId}
-        activeUnitId={activeUnitId}
-        activeItemLabel={activeItemLabel}
-        activeProgress={activeProgress}
-        highlightUnitId={highlightUnitId}
-      />
+      {compact && showOnboarding && (
+        <div className="relative z-20 mb-2 flex shrink-0 justify-end">
+          <DashboardOnboarding compact />
+        </div>
+      )}
 
-      {compact ? (
-        <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
-          <div className="flex flex-wrap gap-1 text-[11px]">
-            {(
-              [
-                { id: "control", label: "실행" },
-                { id: "metrics", label: "효율" },
-                { id: "log", label: "로그" },
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setPanel(t.id)}
-                className={`rounded-full px-2 py-1 transition-colors ${
-                  panel === t.id
-                    ? "bg-emerald-600 text-white"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-            {animating && (
-              <span className="ml-auto flex items-center text-[11px] text-emerald-700 dark:text-emerald-300">
-                실행 중…
-              </span>
-            )}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0">
+          <PixelLineMap
+              line={factory.line}
+              lineSyncVersion={renderVersion}
+              lastFailedUnitId={lastFailedUnitId}
+              activeUnitId={activeUnitId}
+              activeItemLabel={activeItemLabel}
+              activeProgress={activeProgress}
+              activePhase={activePhase}
+              highlightUnitId={highlightUnitId}
+              compact={compact}
+            />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {panel === "control" && (
-              <div className="h-full overflow-auto">
+          {compact ? (
+            <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
+              <div className="flex flex-wrap gap-1 text-[11px]">
+                {(
+                  [
+                    { id: "control", label: "실행" },
+                    { id: "metrics", label: "효율" },
+                    { id: "log", label: "로그" },
+                  ] as const
+                ).map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setPanel(t.id)}
+                    className={`rounded-full px-2 py-1 transition-colors ${
+                      panel === t.id
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+                {animating && (
+                  <span className="ml-auto flex items-center text-[11px] text-emerald-700 dark:text-emerald-300">
+                    실행 중…
+                  </span>
+                )}
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {panel === "control" && (
+                  <div className="h-full overflow-auto">
+                    <UnitControlPanel
+                      line={factory.line}
+                      productInput={productInput}
+                      addUnitKind={addUnitKind}
+                      onAddUnitKindChange={setAddUnitKind}
+                      canAddUnit={canAddUnit}
+                      onProductInputChange={setProductInput}
+                      onPresetSelect={setProductInput}
+                      onStartAll={handleStartAll}
+                      onStopAll={handleStopAll}
+                      onRunPipeline={handleRunPipeline}
+                      onAddUnit={handleAddUnit}
+                      onUnitCountChange={handleUnitCountChange}
+                      energyAtLimit={energyAtLimit}
+                      pipelineRunning={animating}
+                      plantEnergyLabel={plantLabel}
+                    />
+                  </div>
+                )}
+
+                {panel === "metrics" && (
+                  <div className="h-full overflow-auto">
+                    <EfficiencyDonut
+                      percent={efficiency.percent}
+                      finished={efficiency.finished}
+                      plant={efficiency.plant}
+                      energyAtLimit={energyAtLimit}
+                    />
+                  </div>
+                )}
+
+                {panel === "log" && (
+                  <div className="h-full overflow-auto">
+                    <MessageLog entries={logs} />
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-2 lg:gap-3">
+              <div className="min-h-0 overflow-hidden">
                 <UnitControlPanel
+                  fill
                   line={factory.line}
                   productInput={productInput}
                   addUnitKind={addUnitKind}
@@ -300,60 +425,26 @@ export default function DashboardView({
                   onAddUnit={handleAddUnit}
                   onUnitCountChange={handleUnitCountChange}
                   energyAtLimit={energyAtLimit}
+                  pipelineRunning={animating}
                   plantEnergyLabel={plantLabel}
-                  studioMinimal
                 />
               </div>
-            )}
 
-            {panel === "metrics" && (
-              <div className="h-full overflow-auto">
-                <EfficiencyDonut
-                  percent={efficiency.percent}
-                  finished={efficiency.finished}
-                  plant={efficiency.plant}
-                  energyAtLimit={energyAtLimit}
-                />
+              <div className="flex min-h-0 flex-col gap-2 overflow-hidden lg:gap-3">
+                <div className="shrink-0">
+                  <EfficiencyDonut
+                    compact
+                    percent={efficiency.percent}
+                    finished={efficiency.finished}
+                    plant={efficiency.plant}
+                    energyAtLimit={energyAtLimit}
+                  />
+                </div>
+                <MessageLog entries={logs} fill />
               </div>
-            )}
-
-            {panel === "log" && (
-              <div className="h-full overflow-auto">
-                <MessageLog entries={logs} />
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="mt-3 grid flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
-          <UnitControlPanel
-            line={factory.line}
-            productInput={productInput}
-            addUnitKind={addUnitKind}
-            onAddUnitKindChange={setAddUnitKind}
-            canAddUnit={canAddUnit}
-            onProductInputChange={setProductInput}
-            onPresetSelect={setProductInput}
-            onStartAll={handleStartAll}
-            onStopAll={handleStopAll}
-            onRunPipeline={handleRunPipeline}
-            onAddUnit={handleAddUnit}
-            onUnitCountChange={handleUnitCountChange}
-            energyAtLimit={energyAtLimit}
-            plantEnergyLabel={plantLabel}
-          />
-
-          <div className="flex flex-col gap-3">
-            <EfficiencyDonut
-              percent={efficiency.percent}
-              finished={efficiency.finished}
-              plant={efficiency.plant}
-              energyAtLimit={energyAtLimit}
-            />
-            <MessageLog entries={logs} />
-          </div>
-        </div>
-      )}
+            </div>
+          )}
+      </div>
     </div>
   );
 }

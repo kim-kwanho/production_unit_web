@@ -1,53 +1,93 @@
 "use client";
 
+import { memo, useLayoutEffect, useRef } from "react";
 import type { LogEntry } from "@/domain/types";
 
 interface ActivityLogProps {
   entries: LogEntry[];
   compact?: boolean;
+  /** flex-1로 남은 공간을 채우고 내부만 스크롤 */
+  fill?: boolean;
+  title?: string;
 }
 
-const LEVEL_STYLES: Record<LogEntry["level"], string> = {
+const LEVEL_TEXT: Record<LogEntry["level"], string> = {
   info: "text-slate-600 dark:text-slate-300",
   success: "text-emerald-600 dark:text-emerald-400",
   warning: "text-amber-600 dark:text-amber-400",
   error: "text-red-600 dark:text-red-400",
 };
 
-export default function ActivityLog({
+const LEVEL_ROW: Record<LogEntry["level"], string> = {
+  info: "border-l-slate-400 bg-slate-50/60 dark:border-l-slate-500 dark:bg-slate-800/40",
+  success:
+    "border-l-emerald-500 bg-emerald-50/60 dark:border-l-emerald-400 dark:bg-emerald-950/30",
+  warning:
+    "border-l-amber-500 bg-amber-50/60 dark:border-l-amber-400 dark:bg-amber-950/30",
+  error: "border-l-red-500 bg-red-50/60 dark:border-l-red-400 dark:bg-red-950/30",
+};
+
+function ActivityLog({
   entries,
   compact = false,
+  fill = false,
+  title = "실행 결과 (다형성 증명)",
 }: ActivityLogProps) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLLIElement | null>(null);
+
+  useLayoutEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [entries]);
+
+  const heightClass = fill
+    ? "min-h-0 flex-1"
+    : compact
+      ? "h-[200px]"
+      : "h-[240px]";
+
   return (
     <div
-      className={`flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/80 ${
-        compact ? "min-h-[140px]" : "min-h-[200px]"
-      }`}
+      className={`flex ${heightClass} flex-col overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/80`}
     >
-      <div className="shrink-0 border-b border-slate-200 px-3 py-2 dark:border-slate-700">
-        <h3 className="text-xs font-medium text-slate-600 dark:text-slate-300">
-          Activity Log
+      <div className="shrink-0 border-b border-slate-200 px-2.5 py-1.5 dark:border-slate-700">
+        <h3 className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+          {title}
         </h3>
-        <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-          각 실행의 메시지는 process() 내부 발생 순서대로 기록되며, 실행 기록은 위→아래로 누적됩니다.
-        </p>
+        {!compact && (
+          <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+            구현 클래스 클릭 시 같은 process() 호출, 클래스마다 다른 결과
+          </p>
+        )}
       </div>
       <div
-        className="flex-1 overflow-y-auto p-2 font-mono text-[11px]"
+        ref={scrollerRef}
+        className="min-h-0 flex-1 overflow-y-auto p-2 font-mono text-[11px]"
         role="log"
         aria-live="polite"
         aria-relevant="additions"
       >
         {entries.length === 0 ? (
-          <p className="text-slate-500">
-            구현 클래스를 클릭하거나 프리셋을 선택하세요.
-          </p>
+          <ol className="list-inside list-decimal space-y-1.5 text-slate-600 dark:text-slate-300">
+            <li>
+              왼쪽 <span className="font-medium text-emerald-700 dark:text-emerald-300">초록 구현 노드</span>{" "}
+              클릭 (Conveyor / Robot / Inspection)
+            </li>
+            <li>클래스마다 다른 로그 확인 (P-JAM / P-HEAVY / P-DEFECT)</li>
+            <li className="text-[10px] text-slate-500 dark:text-slate-400">
+              다른 item은 아래 「추가 실험」에서 재실행
+            </li>
+          </ol>
         ) : (
-          <ul className="space-y-1.5">
+          <ul className="space-y-1">
             {entries.map((entry, i) => (
-              <li key={`${entry.time}-${i}`} className="flex gap-2">
+              <li
+                key={`${entry.time}-${i}`}
+                ref={i === entries.length - 1 ? bottomRef : undefined}
+                className={`animate-log-entry flex gap-2 rounded-r border-l-[3px] px-2 py-0.5 ${LEVEL_ROW[entry.level]}`}
+              >
                 <span className="shrink-0 text-slate-400">[{entry.time}]</span>
-                <span className={LEVEL_STYLES[entry.level]}>{entry.text}</span>
+                <span className={LEVEL_TEXT[entry.level]}>{entry.text}</span>
               </li>
             ))}
           </ul>
@@ -56,3 +96,5 @@ export default function ActivityLog({
     </div>
   );
 }
+
+export default memo(ActivityLog);

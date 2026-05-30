@@ -1,23 +1,44 @@
 "use client";
 
 import ActivityLog from "./ActivityLog";
-import OopOnboarding from "./OopOnboarding";
-import type { LogEntry, ProductPreset } from "@/domain/types";
-import { PRODUCT_PRESETS } from "@/domain/types";
+import ClassNodeDetailPanel from "./ClassNodeDetailPanel";
+import type { ClassNodeData } from "./ClassNode";
+import type { LogEntry, ProductPreset, UnitStatus } from "@/domain/types";
+import { PRODUCT_PRESETS, RUNNING } from "@/domain/types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const PRIMARY_PRESETS: ProductPreset[] = ["P1", "P-JAM"];
+const RUN_LOADING_MS = 150;
+const RESULT_BADGE_MS = 3000;
+const QUICK_PRESETS: ProductPreset[] = ["P1", "P-JAM", "P-HEAVY", "P-DEFECT"];
+
+function parsePlantEnergy(plantEnergy: string): { current: number; max: number } {
+  const match = plantEnergy.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+  if (match) {
+    return { current: parseFloat(match[1]), max: parseFloat(match[2]) };
+  }
+  return { current: 0, max: 100 };
+}
+
+function detectRunResult(logs: LogEntry[]): "success" | "fail" | null {
+  for (let i = logs.length - 1; i >= 0; i -= 1) {
+    const text = logs[i].text;
+    if (text.includes("→ 성공")) return "success";
+    if (text.includes("→ 실패")) return "fail";
+  }
+  return null;
+}
 
 interface OopSidePanelProps {
   logs: LogEntry[];
   selectedPreset: ProductPreset;
-  selectedNodeLabel: string | null;
+  selectedNode: ClassNodeData | null;
+  selectedUnitStatus: UnitStatus | null;
   canControlUnit: boolean;
+  onClearSelection?: () => void;
   onPresetClick: (preset: ProductPreset) => void;
   onRunSelected: () => void;
-  onRunDemo: () => void;
   onStartSelected: () => void;
   onStopSelected: () => void;
   onReset: () => void;
@@ -28,176 +49,162 @@ interface OopSidePanelProps {
 export default function OopSidePanel({
   logs,
   selectedPreset,
-  selectedNodeLabel,
+  selectedNode,
+  selectedUnitStatus,
   canControlUnit,
+  onClearSelection,
   onPresetClick,
   onRunSelected,
-  onRunDemo,
   onStartSelected,
   onStopSelected,
   onReset,
   plantEnergy,
   compact = false,
 }: OopSidePanelProps) {
-  const [simpleMode, setSimpleMode] = useState(true);
-  const [showMoreItems, setShowMoreItems] = useState(false);
-  const [panel, setPanel] = useState<"control" | "log">("control");
+  const [showAllPresets, setShowAllPresets] = useState(false);
+  const [runLoading, setRunLoading] = useState(false);
+  const [lastResult, setLastResult] = useState<"success" | "fail" | null>(null);
+  const awaitingResultRef = useRef(false);
+  const logsLengthBeforeRunRef = useRef(0);
+
+  const energyGauge = useMemo(() => parsePlantEnergy(plantEnergy), [plantEnergy]);
+  const energyPct = Math.min(
+    100,
+    Math.max(0, (energyGauge.current / energyGauge.max) * 100),
+  );
+
+  const unitStopped =
+    canControlUnit && selectedUnitStatus !== null && selectedUnitStatus !== RUNNING;
+
+  const presetOptions = showAllPresets ? PRODUCT_PRESETS : QUICK_PRESETS;
 
   useEffect(() => {
-    const saved = localStorage.getItem("sf-oop-simple-mode");
-    if (saved === "0") setSimpleMode(false);
-  }, []);
+    if (!awaitingResultRef.current) return;
+    const newLogs = logs.slice(logsLengthBeforeRunRef.current);
+    const result = detectRunResult(newLogs);
+    if (!result) return;
+    awaitingResultRef.current = false;
+    setLastResult(result);
+  }, [logs]);
 
   useEffect(() => {
-    localStorage.setItem("sf-oop-simple-mode", simpleMode ? "1" : "0");
-  }, [simpleMode]);
+    if (!lastResult) return;
+    const timer = window.setTimeout(() => setLastResult(null), RESULT_BADGE_MS);
+    return () => window.clearTimeout(timer);
+  }, [lastResult]);
+
+  const handleRunSelected = useCallback(() => {
+    if (runLoading || !canControlUnit) return;
+    logsLengthBeforeRunRef.current = logs.length;
+    awaitingResultRef.current = true;
+    setRunLoading(true);
+    onRunSelected();
+    window.setTimeout(() => setRunLoading(false), RUN_LOADING_MS);
+  }, [canControlUnit, logs.length, onRunSelected, runLoading]);
 
   return (
-    <aside className="flex h-full min-h-[calc(100vh-8rem)] flex-col">
-      <Card className="flex h-full flex-col dark:bg-slate-900/70">
-        <CardContent className={`flex min-h-0 flex-1 flex-col ${compact ? "p-3" : "p-4"}`}>
-          {!compact && <OopOnboarding />}
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Card className="flex h-full min-h-0 flex-col overflow-hidden dark:bg-slate-900/70">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3">
+          <div className="shrink-0">
+            <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+              <span>공장 에너지</span>
+              <span className="font-mono">{plantEnergy}</span>
+            </div>
+            <div
+              className="h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+              role="progressbar"
+              aria-valuenow={energyGauge.current}
+              aria-valuemin={0}
+              aria-valuemax={energyGauge.max}
+            >
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-[width] duration-300 dark:bg-emerald-400"
+                style={{ width: `${energyPct}%` }}
+              />
+            </div>
+          </div>
 
-          {compact && (
-            <div className="mb-2 flex flex-wrap gap-1 text-[11px]">
-              {(
-                [
-                  { id: "control", label: "실행" },
-                  { id: "log", label: "로그" },
-                ] as const
-              ).map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setPanel(t.id)}
-                  className={`rounded-full px-2 py-1 transition-colors ${
-                    panel === t.id
-                      ? "bg-emerald-600 text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-              <span className="ml-auto flex items-center text-[11px] text-slate-500 dark:text-slate-400">
-                {selectedNodeLabel ?? "선택 없음"}
-              </span>
+          {unitStopped && (
+            <div
+              className="shrink-0 rounded-md border border-amber-300/80 bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100"
+              role="status"
+            >
+              <span className="font-medium">정지 상태</span> — 오버라이드 데모 대신 base
+              경고만 나올 수 있습니다. 아래에서 <strong>가동</strong> 후 카드를 다시 클릭하세요.
             </div>
           )}
 
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                선택된 클래스
-              </p>
-              <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                {selectedNodeLabel ?? "아직 선택되지 않음"}
-              </p>
-              <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                {canControlUnit
-                  ? "구현 클래스 선택됨 → process() 실행 가능"
-                  : "ADT/추상 클래스는 ‘설명용’ 노드입니다."}
-              </p>
-            </div>
-            <Button
-              onClick={() => setSimpleMode((v) => !v)}
-              variant="secondary"
-              size="sm"
-              title="표시 옵션 전환"
-              className={compact ? "hidden" : undefined}
-            >
-              {simpleMode ? "기본 모드" : "확장 모드"}
-            </Button>
-          </div>
+          <ActivityLog entries={logs} compact={compact} fill />
 
-          {compact && panel === "log" ? (
-            <div className="min-h-0 flex-1">
-              <ActivityLog entries={logs} compact />
-            </div>
-          ) : (
-            <>
-          <div className="mb-3">
-            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              입력(item) 선택
-            </h2>
-            {!compact && (
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              같은 process(item) 호출이 클래스마다 어떻게 달라지는지 확인하세요.
+          <details className="shrink-0 rounded-lg border border-slate-200/80 bg-slate-50/50 dark:border-slate-700/60 dark:bg-slate-950/30">
+            <summary className="cursor-pointer select-none px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+              추가 실험 · 가동/정지
+            </summary>
+            <div className="space-y-2 border-t border-slate-200/80 px-2.5 py-2 dark:border-slate-700/60">
+              <p className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+                클릭은 <strong className="text-slate-700 dark:text-slate-200">P1</strong> 정상
+                가동(에너지·효율 비교).{" "}
+                <strong className="text-slate-700 dark:text-slate-200">P-JAM / P-HEAVY / P-DEFECT</strong>
+                는 막힘·실패 데모용입니다.
               </p>
-            )}
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(showMoreItems ? PRODUCT_PRESETS : PRIMARY_PRESETS).map(
-                (preset) => (
+
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                  item
+                </span>
+                {presetOptions.map((preset) => (
+                  <Button
+                    key={preset}
+                    onClick={() => onPresetClick(preset)}
+                    variant={selectedPreset === preset ? "primary" : "secondary"}
+                    size="sm"
+                    className="h-6 rounded-full px-2 text-[10px]"
+                    disabled={!canControlUnit}
+                  >
+                    {preset}
+                  </Button>
+                ))}
                 <Button
-                  key={preset}
-                  onClick={() => onPresetClick(preset)}
-                  variant={selectedPreset === preset ? "primary" : "secondary"}
+                  onClick={() => setShowAllPresets((v) => !v)}
+                  variant="ghost"
                   size="sm"
-                  className="rounded-full px-3"
+                  className="h-6 rounded-full px-2 text-[10px]"
                 >
-                  {preset}
+                  {showAllPresets ? "접기" : "전체"}
                 </Button>
-                ),
-              )}
-              <Button
-                onClick={() => setShowMoreItems((v) => !v)}
-                variant="ghost"
-                size="sm"
-                className="rounded-full px-3"
-                title="입력(item) 더보기"
-              >
-                {showMoreItems ? "접기" : "더보기"}
-              </Button>
-            </div>
-          </div>
+              </div>
 
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Button
-              onClick={onRunSelected}
-              variant="primary"
-              size="md"
-              disabled={!canControlUnit}
-              title={!canControlUnit ? "먼저 구현 클래스를 선택하세요" : undefined}
-              className="flex-1"
-            >
-              process(&quot;{selectedPreset}&quot;) 실행
-            </Button>
-            <Button
-              onClick={onRunDemo}
-              variant="secondary"
-              size="md"
-              disabled={!canControlUnit}
-              title={!canControlUnit ? "먼저 구현 클래스를 선택하세요" : undefined}
-            >
-              데모 실행
-            </Button>
-          </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  onClick={handleRunSelected}
+                  variant="secondary"
+                  size="sm"
+                  disabled={!canControlUnit || runLoading}
+                  className="h-7 flex-1 text-[10px]"
+                >
+                  {runLoading ? "실행 중…" : `재실행 process("${selectedPreset}")`}
+                </Button>
+                {lastResult && (
+                  <span
+                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
+                      lastResult === "success"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
+                        : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200"
+                    }`}
+                  >
+                    {lastResult === "success" ? "✓" : "✗"}
+                  </span>
+                )}
+              </div>
 
-          {!compact && (
-            <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-200">
-              <p className="font-semibold">핵심 관찰 포인트</p>
-              <p className="mt-1 text-slate-600 dark:text-slate-300">
-                동일한{" "}
-                <code className="font-mono text-emerald-700 dark:text-emerald-300">
-                  process()
-                </code>{" "}
-                호출이라도, <b>선택한 구현 클래스</b>에 따라 로그 메시지가 달라집니다
-                (오버라이딩/다형성).
-              </p>
-            </div>
-          )}
-
-          {!compact && !simpleMode && (
-            <details className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/40">
-              <summary className="cursor-pointer select-none text-xs font-semibold text-slate-700 dark:text-slate-200">
-                확장 옵션(공장 요소)
-              </summary>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 <Button
                   onClick={onStartSelected}
-                  variant="primary"
+                  variant="secondary"
                   size="sm"
                   disabled={!canControlUnit}
+                  className="h-7 text-[10px]"
                 >
                   가동
                 </Button>
@@ -206,40 +213,27 @@ export default function OopSidePanel({
                   variant="warning"
                   size="sm"
                   disabled={!canControlUnit}
+                  className="h-7 text-[10px]"
                 >
                   정지
                 </Button>
-                <Button onClick={onReset} variant="secondary" size="sm">
+                <Button onClick={onReset} variant="ghost" size="sm" className="h-7 text-[10px]">
                   세션 리셋
                 </Button>
-                <span className="ml-auto flex items-center text-[11px] text-slate-500 dark:text-slate-400">
-                  에너지 {plantEnergy}
-                </span>
               </div>
-            </details>
-          )}
 
-          {!compact && (
-            <div className="min-h-0 flex-1">
-              <ActivityLog entries={logs} compact={compact} />
+              {selectedNode && (
+                <ClassNodeDetailPanel
+                  node={selectedNode}
+                  canControlUnit={canControlUnit}
+                  onClear={onClearSelection}
+                  compact={compact}
+                  minimal
+                />
+              )}
             </div>
-          )}
-            </>
-          )}
+          </details>
         </CardContent>
-
-        <CardFooter className={`${compact ? "px-3 py-2" : "px-4 py-3"}`}>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            {simpleMode
-              ? "기본 모드: 선택 → 실행 → 로그 확인"
-              : "확장 모드: 가동/정지/에너지 포함"}
-          </p>
-          {simpleMode && (
-            <Button onClick={onReset} variant="secondary" size="sm">
-              세션 리셋
-            </Button>
-          )}
-        </CardFooter>
       </Card>
     </aside>
   );
