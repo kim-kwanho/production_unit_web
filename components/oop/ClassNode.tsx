@@ -65,8 +65,8 @@ function ClassNode({
 
   const isRunnable = node.kind === "concrete";
   const hint = isRunnable
-    ? "호버 → 스펙 · 클릭 → P1 실행"
-    : "호버 → 설명";
+    ? "클릭하여 P1 실행, 가까이 가면 스펙"
+    : "가까이 가면 설명";
 
   return (
     <g
@@ -207,21 +207,6 @@ function ClassNode({
           </text>
         </g>
       )}
-      <text
-        x={node.x + node.width / 2}
-        y={node.y + node.height - 10}
-        textAnchor="middle"
-        fill="var(--oop-node-sub-fill)"
-        fontSize={10}
-        fontWeight={500}
-        pointerEvents="none"
-      >
-        {isWorking
-          ? "작업 중"
-          : node.kind === "concrete"
-            ? "호버 스펙 · 클릭 P1"
-            : "호버 → 설명"}
-      </text>
     </g>
   );
 }

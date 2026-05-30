@@ -39,6 +39,8 @@ export interface ClickHintContent {
   variant: ClickHintVariant;
   /** 호버용 간단 레이아웃 (푸터·섹션 제목 생략) */
   compact?: boolean;
+  /** 스펙 영역 위 짧은 안내 (예: 가까이 가면) */
+  specCaption?: string;
 }
 
 export interface ClickHintAnchor {
@@ -111,9 +113,10 @@ export function buildHoverUnitHint(
       anchorRect,
       content: {
         title: spec.label,
-        subtitle: `${spec.role} · ${spec.deviceId}`,
+        subtitle: `클릭 → process("P1") 실행 · ${spec.role} · ${spec.deviceId}`,
+        specCaption: "가까이 가면",
         specRows: concreteHoverSpecRows(spec),
-        lines: ["클릭 → P1 실행"],
+        lines: [],
         variant: "override",
         compact: true,
       },
@@ -142,6 +145,7 @@ export function applyRunToHoverHint(
       ...anchor.content,
       title: run.title,
       subtitle: anchor.content.subtitle,
+      specCaption: undefined,
       specRows: undefined,
       lines: run.lines,
       variant: run.variant,
@@ -165,6 +169,7 @@ export function buildStaticClickHint(
     clientY,
     content: {
       title: nodeId === "adt" ? "ProductionUnitADT" : "ProductionUnit",
+      specCaption: "가까이 가면",
       lines: [short],
       variant: "info",
       compact: true,

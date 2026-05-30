@@ -143,10 +143,12 @@ export default function OopSidePanel({
             </summary>
             <div className="space-y-2 border-t border-slate-200/80 px-2.5 py-2 dark:border-slate-700/60">
               <p className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
-                클릭은 <strong className="text-slate-700 dark:text-slate-200">P1</strong> 정상
-                가동(에너지·효율 비교).{" "}
-                <strong className="text-slate-700 dark:text-slate-200">P-JAM / P-HEAVY / P-DEFECT</strong>
-                는 막힘·실패 데모용입니다.
+                <strong className="text-slate-700 dark:text-slate-200">P1</strong>은 다이어그램에서 구현 클래스를{" "}
+                <strong className="text-slate-700 dark:text-slate-200">클릭</strong>하면 실행됩니다.
+                여기서는 <strong className="text-slate-700 dark:text-slate-200">가동/정지</strong>와 다른 item을
+                골라 재실행할 수 있습니다.{" "}
+                <strong className="text-slate-700 dark:text-slate-200">P-JAM / P-HEAVY / P-DEFECT</strong>는
+                막힘·실패 데모용입니다.
               </p>
 
               <div className="flex flex-wrap items-center gap-1">

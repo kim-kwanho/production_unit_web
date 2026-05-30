@@ -7,7 +7,7 @@ const MODULES = [
     href: "/oop-lab",
     title: "OOP Lab",
     description:
-      "클래스를 클릭하면 process()가 즉시 실행됩니다. 기계마다 다른 다형성 동작을 로그로 확인하세요.",
+      "가까이 가면 스펙, 클릭하면 P1 process()가 실행됩니다. 클래스마다 다른 결과를 Activity Log로 비교하세요.",
     Icon: IconOop,
   },
   {

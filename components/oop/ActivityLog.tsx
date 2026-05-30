@@ -71,11 +71,11 @@ function ActivityLog({
           <ol className="list-inside list-decimal space-y-1.5 text-slate-600 dark:text-slate-300">
             <li>
               왼쪽 <span className="font-medium text-emerald-700 dark:text-emerald-300">초록 구현 노드</span>{" "}
-              클릭 (Conveyor / Robot / Inspection)
+              클릭 → P1 실행 (Conveyor / Robot / Inspection)
             </li>
-            <li>클래스마다 다른 로그 확인 (P-JAM / P-HEAVY / P-DEFECT)</li>
+            <li>오른쪽 로그에서 클래스마다 다른 결과·에너지 확인</li>
             <li className="text-[10px] text-slate-500 dark:text-slate-400">
-              다른 item은 아래 「추가 실험」에서 재실행
+              실패·다른 item은 아래 「추가 실험」 (P-JAM / P-HEAVY / P-DEFECT)
             </li>
           </ol>
         ) : (
