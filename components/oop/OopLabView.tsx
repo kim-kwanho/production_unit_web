@@ -1,21 +1,24 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import InheritanceDiagram from "@/components/oop/InheritanceDiagram";
+import { useCallback, useMemo, useState } from "react";
+import { appendLogEntries } from "@/lib/logBuffer";
+import InheritanceView from "@/components/oop/InheritanceView";
 import OopSidePanel from "@/components/oop/OopSidePanel";
-import { createLogEntry, logFromProcess } from "@/domain/log";
+import { createLogEntry } from "@/domain/log";
 import { createOopLabFactory } from "@/domain/oopLabFactory";
-import type { IProductionUnit } from "@/domain/ProductionUnitADT";
 import {
-  NODE_DEMO_ITEMS,
+  getDemoItemForNode,
+  getDemoItemOwnerNodeId,
   NODE_INFO,
   NODE_TO_UNIT,
+  OOP_CLASS_NODES,
 } from "@/components/oop/oopLabModel";
 import {
   PLANT_ENERGY_LIMIT,
   type LogEntry,
   type ProductPreset,
 } from "@/domain/types";
+import { useOopLabProcess } from "@/hooks/useOopLabProcess";
 
 export default function OopLabView({
   compact = false,
@@ -30,105 +33,42 @@ export default function OopLabView({
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [, setRenderVersion] = useState(0);
 
-  const snapshotUnit = useCallback((u: IProductionUnit) => {
-    const info = u.info();
-    const kv = Object.fromEntries(
-      info
-        .split(",")
-        .map((s) => s.trim())
-        .map((pair) => {
-          const i = pair.indexOf("=");
-          if (i < 0) return [pair, ""];
-          return [pair.slice(0, i), pair.slice(i + 1)];
-        }),
-    );
-    const toNum = (v: unknown) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
-    };
-
-    return {
-      deviceId: u.deviceId,
-      stationType: u.stationType,
-      processedCount: u.processedCount,
-      expEff: toNum(kv.exp_eff),
-    };
-  }, []);
-
-  const getUnitForNode = useCallback(
-    (nodeId: string): IProductionUnit | null => {
-      const kind = NODE_TO_UNIT[nodeId];
-      if (!kind) return null;
-      if (kind === "conveyor") return factory.units.conveyor;
-      if (kind === "robot_arm") return factory.units.robot;
-      return factory.units.inspection;
-    },
-    [factory],
-  );
-
   const appendLogs = useCallback((entries: LogEntry[]) => {
-    setLogs((prev) => [...prev, ...entries]);
+    setLogs((prev) => appendLogEntries(prev, entries));
   }, []);
 
-  const runProcess = useCallback(
-    (nodeId: string, item: string) => {
-      const unit = getUnitForNode(nodeId);
-      if (!unit) return;
-
-      const plantBefore = factory.plantEnergy.total;
-      const before = snapshotUnit(unit);
-      const result = unit.process(item);
-      const plantAfter = factory.plantEnergy.total;
-      const after = snapshotUnit(unit);
-
-      const processedDelta = after.processedCount - before.processedCount;
-      const energyDelta = plantAfter - plantBefore;
-
-      appendLogs([
-        createLogEntry(
-          `━━ 변화(diff): ${before.deviceId} (${before.stationType}) ━━`,
-          "info",
-        ),
-        createLogEntry(
-          `processed: ${before.processedCount} → ${after.processedCount} (${processedDelta >= 0 ? "+" : ""}${processedDelta})`,
-          processedDelta > 0 ? "success" : "info",
-        ),
-        createLogEntry(
-          `plant_energy: ${plantBefore.toFixed(1)} → ${plantAfter.toFixed(1)} (${energyDelta >= 0 ? "+" : ""}${energyDelta.toFixed(1)})`,
-          energyDelta > 0 ? "warning" : "info",
-        ),
-        createLogEntry(
-          `▶ ${unit.deviceId}.process("${item}") → ${result.ok ? "성공" : "실패"}`,
-          result.ok ? "success" : "error",
-        ),
-        ...logFromProcess(result.messages),
-      ]);
-      setRenderVersion((n) => n + 1);
-    },
-    [appendLogs, factory.plantEnergy, getUnitForNode, snapshotUnit],
+  const { getUnitForNode, runProcess, getDemoItemForKind } = useOopLabProcess(
+    factory,
+    appendLogs,
+    () => setRenderVersion((n) => n + 1),
   );
 
-  const handleNodeClick = (nodeId: string) => {
-    setSelectedNodeId(nodeId);
+  const handleNodeClick = useCallback(
+    (nodeId: string | null) => {
+      if (nodeId === null) {
+        setSelectedNodeId(null);
+        onConcreteSelect?.(null);
+        return;
+      }
 
-    const infoText = NODE_INFO[nodeId];
-    if (infoText) {
-      appendLogs([createLogEntry(`ℹ ${infoText}`, "info")]);
-      onConcreteSelect?.(null);
-      return;
-    }
+      const infoText = NODE_INFO[nodeId];
+      if (infoText) {
+        appendLogs([createLogEntry(`ℹ ${infoText}`, "info")]);
+        return;
+      }
 
-    const kind = NODE_TO_UNIT[nodeId];
-    if (!kind) return;
-    const unit = getUnitForNode(nodeId);
-    onConcreteSelect?.(unit?.deviceId ?? null);
-    appendLogs([
-      createLogEntry(
-        `선택됨: ${nodeId} — 우측에서 입력(item)을 선택하고 실행해 보세요.`,
-        "info",
-      ),
-    ]);
-  };
+      const kind = NODE_TO_UNIT[nodeId];
+      if (!kind) return;
+
+      const demoItem = getDemoItemForKind(kind);
+      setSelectedNodeId(nodeId);
+      setSelectedPreset(demoItem as ProductPreset);
+      const unit = getUnitForNode(nodeId);
+      onConcreteSelect?.(unit?.deviceId ?? null);
+      runProcess(nodeId, demoItem);
+    },
+    [appendLogs, getDemoItemForKind, getUnitForNode, onConcreteSelect, runProcess],
+  );
 
   const handlePresetClick = (preset: ProductPreset) => {
     setSelectedPreset(preset);
@@ -138,11 +78,29 @@ export default function OopLabView({
     if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
       appendLogs([
         createLogEntry(
-          "먼저 다이어그램에서 구현 클래스(Conveyor / Robot / Inspection)를 선택하세요.",
+          "먼저 상속 뷰에서 초록색 구현 클래스(Conveyor / Robot / Inspection)를 클릭하세요.",
           "warning",
         ),
       ]);
       return;
+    }
+    const unitDemo = getDemoItemForNode(selectedNodeId);
+    const ownerNodeId = getDemoItemOwnerNodeId(selectedPreset);
+    if (
+      unitDemo &&
+      selectedPreset !== "P1" &&
+      selectedPreset !== unitDemo &&
+      ownerNodeId &&
+      ownerNodeId !== selectedNodeId
+    ) {
+      const ownerLabel =
+        OOP_CLASS_NODES.find((n) => n.id === ownerNodeId)?.label ?? ownerNodeId;
+      appendLogs([
+        createLogEntry(
+          `ℹ "${selectedPreset}"은(는) ${ownerLabel} 전용 실패 데모입니다. 현재 선택 클래스에서는 다른 키워드 검사가 적용됩니다.`,
+          "info",
+        ),
+      ]);
     }
     runProcess(selectedNodeId, selectedPreset);
   };
@@ -150,19 +108,21 @@ export default function OopLabView({
   const handleRunDemo = () => {
     if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
       appendLogs([
-        createLogEntry("먼저 다이어그램에서 구현 클래스를 선택하세요.", "warning"),
+        createLogEntry("먼저 상속 뷰에서 초록색 구현 클래스를 클릭하세요.", "warning"),
       ]);
       return;
     }
     const kind = NODE_TO_UNIT[selectedNodeId];
     if (!kind) return;
-    runProcess(selectedNodeId, NODE_DEMO_ITEMS[kind]);
+    const demoItem = getDemoItemForKind(kind);
+    setSelectedPreset(demoItem as ProductPreset);
+    runProcess(selectedNodeId, demoItem);
   };
 
   const handleStartSelected = () => {
     if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
       appendLogs([
-        createLogEntry("먼저 다이어그램에서 구현 클래스를 선택하세요.", "warning"),
+        createLogEntry("먼저 상속 뷰에서 초록색 구현 클래스를 클릭하세요.", "warning"),
       ]);
       return;
     }
@@ -187,39 +147,52 @@ export default function OopLabView({
     factory.reset();
     setLogs([]);
     setSelectedNodeId(null);
+    setSelectedPreset("P1");
     onConcreteSelect?.(null);
     setRenderVersion((n) => n + 1);
   };
 
-  const selectedUnit = selectedNodeId ? getUnitForNode(selectedNodeId) : null;
+  const selectedNode = useMemo(
+    () => OOP_CLASS_NODES.find((n) => n.id === selectedNodeId) ?? null,
+    [selectedNodeId],
+  );
+  const unitDemoItem = useMemo(
+    () => (selectedNodeId ? getDemoItemForNode(selectedNodeId) : null),
+    [selectedNodeId],
+  );
   const canControlUnit = Boolean(selectedNodeId && NODE_TO_UNIT[selectedNodeId]);
 
   return (
     <div
       className={
         compact
-          ? "flex h-full flex-col p-3"
-          : "flex h-full flex-col p-4 lg:p-6"
+          ? "flex h-full min-h-0 flex-col overflow-hidden p-3"
+          : "flex h-full min-h-0 flex-col overflow-hidden p-3 lg:p-4"
       }
     >
       {!compact && (
-        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-          같은{" "}
-          <code className="text-emerald-600 dark:text-emerald-400">process()</code>{" "}
-          호출 — 클래스마다 다른 결과 (다형성)
+        <p className="mb-2 shrink-0 text-xs text-slate-600 dark:text-slate-400">
+          같은 <code className="text-emerald-600 dark:text-emerald-400">process()</code> 호출 —
+          클래스마다 다른 결과(다형성).{" "}
+          <span className="font-medium text-emerald-700 dark:text-emerald-300">
+            초록 구현 카드를 클릭하면 오른쪽 실행 결과에 즉시 표시됩니다.
+          </span>
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_minmax(280px,30%)]">
-        <InheritanceDiagram
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[1fr_minmax(300px,36%)]">
+        <InheritanceView
           selectedNodeId={selectedNodeId}
           onSelectNode={handleNodeClick}
+          compact={compact}
         />
         <OopSidePanel
           logs={logs}
           selectedPreset={selectedPreset}
-          selectedNodeLabel={selectedUnit?.deviceId ?? null}
+          unitDemoItem={unitDemoItem}
+          selectedNode={selectedNode}
           canControlUnit={canControlUnit}
+          onClearSelection={() => handleNodeClick(null)}
           onPresetClick={handlePresetClick}
           onRunSelected={handleRunSelected}
           onRunDemo={handleRunDemo}
@@ -233,4 +206,3 @@ export default function OopLabView({
     </div>
   );
 }
-

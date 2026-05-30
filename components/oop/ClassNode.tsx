@@ -1,12 +1,21 @@
 "use client";
 
+import { memo } from "react";
+
+export interface ClassMethodRef {
+  name: string;
+  overridden?: boolean;
+  abstract?: boolean;
+}
+
 export interface ClassNodeData {
   id: string;
   label: string;
   kind: "interface" | "abstract" | "concrete";
   stationType?: string;
   deviceId?: string;
-  methods: { name: string; overridden?: boolean }[];
+  inheritedMethods: ClassMethodRef[];
+  overriddenMethods: ClassMethodRef[];
   x: number;
   y: number;
   width: number;
@@ -16,8 +25,9 @@ export interface ClassNodeData {
 interface ClassNodeProps {
   node: ClassNodeData;
   selected: boolean;
-  onHover: (node: ClassNodeData | null) => void;
   onClick: (node: ClassNodeData) => void;
+  /** interface/abstract — 계약·상속 메서드 1줄 미리보기 */
+  showMethods?: boolean;
 }
 
 function nodeFill(kind: ClassNodeData["kind"], selected: boolean): string {
@@ -28,40 +38,29 @@ function nodeFill(kind: ClassNodeData["kind"], selected: boolean): string {
     : "var(--oop-node-concrete-fill)";
 }
 
-export default function ClassNode({
-  node,
-  selected,
-  onHover,
-  onClick,
-}: ClassNodeProps) {
-  const fill = nodeFill(node.kind, selected);
-
+function ClassNode({ node, selected, onClick, showMethods = false }: ClassNodeProps) {
   const stroke = selected
     ? "#22c55e"
     : node.kind === "interface"
-        ? "#94a3b8"
-        : node.kind === "abstract"
-          ? "#64748b"
-          : "#10b981";
-
+      ? "var(--oop-node-interface-stroke, #7c3aed)"
+      : node.kind === "abstract"
+        ? "var(--oop-node-abstract-stroke, #2563eb)"
+        : "#10b981";
   const dash = node.kind === "interface" ? "6 4" : undefined;
   const strokeWidth = selected ? 3.5 : 2;
+  const showPulse = node.kind === "concrete" && !selected;
 
-  const hint =
-    node.kind === "concrete"
-      ? "실행"
-      : node.kind === "abstract"
-        ? "설명"
-        : "설명";
+  const isRunnable = node.kind === "concrete";
+  const hint = isRunnable
+    ? "클릭하여 process() 실행"
+    : "정보 전용 — 클릭 시 설명 표시";
 
   return (
     <g
-      className="cursor-pointer"
+      className={isRunnable ? "cursor-pointer" : "cursor-help"}
       role="button"
       tabIndex={0}
-      aria-label={`${node.label} 클래스 (${hint})`}
-      onMouseEnter={() => onHover(node)}
-      onMouseLeave={() => onHover(null)}
+      aria-label={`${node.label} — ${hint}`}
       onClick={() => onClick(node)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -69,7 +68,18 @@ export default function ClassNode({
           onClick(node);
         }
       }}
+      style={isRunnable ? undefined : { opacity: 0.92 }}
     >
+      {showPulse && (
+        <rect
+          className="oop-concrete-pulse-ring"
+          x={node.x - 5}
+          y={node.y - 5}
+          width={node.width + 10}
+          height={node.height + 10}
+          rx={10}
+        />
+      )}
       {selected && (
         <rect
           x={node.x - 4}
@@ -89,7 +99,7 @@ export default function ClassNode({
         width={node.width}
         height={node.height}
         rx={8}
-        fill={fill}
+        fill={nodeFill(node.kind, selected)}
         stroke={stroke}
         strokeWidth={strokeWidth}
         strokeDasharray={dash}
@@ -126,6 +136,33 @@ export default function ClassNode({
           {node.deviceId}
         </text>
       )}
+      {showMethods && node.inheritedMethods.length > 0 && (
+        <text
+          x={node.x + node.width / 2}
+          y={node.y + node.height - 22}
+          textAnchor="middle"
+          fill="var(--oop-node-method-fill)"
+          fontSize={9}
+        >
+          {node.inheritedMethods
+            .slice(0, 5)
+            .map((m) => `${m.name}()`)
+            .join(" · ")}
+        </text>
+      )}
+      {node.kind === "concrete" &&
+        node.overriddenMethods.some((m) => m.overridden) && (
+          <text
+            x={node.x + node.width / 2}
+            y={node.y + node.height - 22}
+            textAnchor="middle"
+            fill="var(--oop-node-override-fill)"
+            fontSize={9}
+            fontWeight={600}
+          >
+            ★ process() override
+          </text>
+        )}
       <text
         x={node.x + node.width / 2}
         y={node.y + node.height - 10}
@@ -134,8 +171,10 @@ export default function ClassNode({
         fontSize={10}
         fontWeight={500}
       >
-        {node.kind === "concrete" ? "실행 가능" : "설명"}
+        {node.kind === "concrete" ? "클릭하여 실행" : "정보 전용"}
       </text>
     </g>
   );
 }
+
+export default memo(ClassNode);
