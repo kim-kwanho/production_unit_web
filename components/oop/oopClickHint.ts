@@ -1,4 +1,4 @@
-import type { MouseEvent, PointerEvent } from "react";
+import type { FocusEvent, MouseEvent, PointerEvent } from "react";
 import type { ProcessRunOutcome } from "@/hooks/useOopLabProcess";
 import { CONCRETE_SPEC_BY_NODE, type ConcreteClassSpec } from "./classNodeSpecs";
 import type { HintAnchorRect } from "./hintPosition";
@@ -7,6 +7,19 @@ import { NODE_INFO, NODE_WHY } from "./oopLabModel";
 export type { HintAnchorRect };
 
 export type NodePointerEvent = MouseEvent | PointerEvent;
+
+export type NodeHoverEvent = NodePointerEvent | FocusEvent<Element>;
+
+export function clientPointForHover(
+  event: NodeHoverEvent,
+  element: Element,
+): { clientX: number; clientY: number } {
+  if ("clientX" in event && typeof event.clientX === "number") {
+    return { clientX: event.clientX, clientY: event.clientY };
+  }
+  const r = element.getBoundingClientRect();
+  return { clientX: r.right + 14, clientY: r.top + r.height / 2 };
+}
 
 export type ClickHintVariant = "override" | "override-fail" | "info";
 
@@ -77,17 +90,24 @@ function runOutcomeContent(
   };
 }
 
+function hoverAnchorPoint(event: NodeHoverEvent): { clientX: number; clientY: number } {
+  const el = event.currentTarget instanceof Element ? event.currentTarget : null;
+  if (el) return clientPointForHover(event, el);
+  return { clientX: 0, clientY: 0 };
+}
+
 /** 호버 시 유닛 고유 스펙·설명 */
 export function buildHoverUnitHint(
   nodeId: string,
-  event: NodePointerEvent,
+  event: NodeHoverEvent,
   anchorRect?: HintAnchorRect,
 ): ClickHintAnchor | null {
+  const { clientX, clientY } = hoverAnchorPoint(event);
   const spec = CONCRETE_SPEC_BY_NODE[nodeId];
   if (spec) {
     return {
-      clientX: event.clientX,
-      clientY: event.clientY,
+      clientX,
+      clientY,
       anchorRect,
       content: {
         title: spec.label,
@@ -132,16 +152,17 @@ export function applyRunToHoverHint(
 
 export function buildStaticClickHint(
   nodeId: string,
-  event: NodePointerEvent,
+  event: NodeHoverEvent,
 ): ClickHintAnchor | null {
   if (!NODE_INFO[nodeId] && !NODE_WHY[nodeId]) return null;
+  const { clientX, clientY } = hoverAnchorPoint(event);
   const short =
     nodeId === "adt"
       ? "인터페이스 — process() 등 메서드 계약"
       : "추상 클래스 — super.process()로 공통 처리";
   return {
-    clientX: event.clientX,
-    clientY: event.clientY,
+    clientX,
+    clientY,
     content: {
       title: nodeId === "adt" ? "ProductionUnitADT" : "ProductionUnit",
       lines: [short],

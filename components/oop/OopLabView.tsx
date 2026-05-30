@@ -10,7 +10,7 @@ import {
   buildHoverUnitHint,
   type ClickHintAnchor,
   type HintAnchorRect,
-  type NodePointerEvent,
+  type NodeHoverEvent,
 } from "@/components/oop/oopClickHint";
 import { createLogEntry } from "@/domain/log";
 import { createOopLabFactory } from "@/domain/oopLabFactory";
@@ -79,7 +79,7 @@ export default function OopLabView({
   );
 
   const handleNodeHover = useCallback(
-    (nodeId: string, event: NodePointerEvent, anchorRect: HintAnchorRect) => {
+    (nodeId: string, event: NodeHoverEvent, anchorRect: HintAnchorRect) => {
       hoveredNodeIdRef.current = nodeId;
       const hint = buildHoverUnitHint(nodeId, event, anchorRect);
       if (hint) setHoverHint(hint);
@@ -140,6 +140,7 @@ export default function OopLabView({
   };
 
   const selectedUnit = useMemo(() => {
+    void renderVersion;
     if (!selectedNodeId) return null;
     return getUnitForNode(selectedNodeId);
   }, [getUnitForNode, selectedNodeId, renderVersion]);

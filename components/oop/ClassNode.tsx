@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import type { NodePointerEvent } from "./oopClickHint";
+import type { NodeHoverEvent, NodePointerEvent } from "./oopClickHint";
 
 export interface ClassMethodRef {
   name: string;
@@ -27,7 +27,7 @@ interface ClassNodeProps {
   node: ClassNodeData;
   selected: boolean;
   isWorking?: boolean;
-  onPointerEnter: (node: ClassNodeData, event: NodePointerEvent) => void;
+  onPointerEnter: (node: ClassNodeData, event: NodeHoverEvent) => void;
   onPointerLeave: (node: ClassNodeData) => void;
   onPointerUp: (node: ClassNodeData, event: NodePointerEvent) => void;
   showMethods?: boolean;

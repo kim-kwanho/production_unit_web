@@ -3,15 +3,15 @@
 import { memo, useCallback, useId, useMemo } from "react";
 import ClassNode, { type ClassNodeData } from "./ClassNode";
 import { rectFromElement } from "./hintPosition";
-import type { HintAnchorRect, NodePointerEvent } from "./oopClickHint";
+import type { HintAnchorRect, NodeHoverEvent } from "./oopClickHint";
 import { GENERALIZATION_EDGES, OOP_CLASS_NODES } from "./oopLabModel";
 
 interface InheritanceDiagramProps {
   selectedNodeId: string | null;
   workingNodeId: string | null;
-  onNodeHover: (nodeId: string, event: NodePointerEvent, anchorRect: HintAnchorRect) => void;
+  onNodeHover: (nodeId: string, event: NodeHoverEvent, anchorRect: HintAnchorRect) => void;
   onNodeHoverEnd: (nodeId: string) => void;
-  onSelectNode: (nodeId: string | null, event?: NodePointerEvent) => void;
+  onSelectNode: (nodeId: string | null) => void;
   compact?: boolean;
 }
 
@@ -107,7 +107,7 @@ function InheritanceDiagram({
   );
 
   const handleNodePointerEnter = useCallback(
-    (node: ClassNodeData, event: NodePointerEvent) => {
+    (node: ClassNodeData, event: NodeHoverEvent) => {
       const target = event.currentTarget;
       const anchorRect =
         target instanceof Element ? rectFromElement(target) : rectFromElement(event.target as Element);
