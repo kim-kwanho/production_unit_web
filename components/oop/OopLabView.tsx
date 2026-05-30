@@ -1,24 +1,29 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { appendLogEntries } from "@/lib/logBuffer";
-import InheritanceView from "@/components/oop/InheritanceView";
+import ClickProcessHint from "@/components/oop/ClickProcessHint";
+import InheritanceDiagram from "@/components/oop/InheritanceDiagram";
 import OopSidePanel from "@/components/oop/OopSidePanel";
+import {
+  applyRunToHoverHint,
+  buildHoverUnitHint,
+  type ClickHintAnchor,
+  type HintAnchorRect,
+  type NodePointerEvent,
+} from "@/components/oop/oopClickHint";
 import { createLogEntry } from "@/domain/log";
 import { createOopLabFactory } from "@/domain/oopLabFactory";
 import {
-  getDemoItemForNode,
-  getDemoItemOwnerNodeId,
+  NODE_CLICK_ITEM,
   NODE_INFO,
   NODE_TO_UNIT,
   OOP_CLASS_NODES,
 } from "@/components/oop/oopLabModel";
-import {
-  PLANT_ENERGY_LIMIT,
-  type LogEntry,
-  type ProductPreset,
-} from "@/domain/types";
+import type { LogEntry, ProductPreset } from "@/domain/types";
 import { useOopLabProcess } from "@/hooks/useOopLabProcess";
+
+const WORKING_MS = 900;
 
 export default function OopLabView({
   compact = false,
@@ -31,43 +36,89 @@ export default function OopLabView({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<ProductPreset>("P1");
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [, setRenderVersion] = useState(0);
+  const [renderVersion, setRenderVersion] = useState(0);
+  const [hoverHint, setHoverHint] = useState<ClickHintAnchor | null>(null);
+  const [workingNodeId, setWorkingNodeId] = useState<string | null>(null);
+  const workingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoveredNodeIdRef = useRef<string | null>(null);
 
   const appendLogs = useCallback((entries: LogEntry[]) => {
     setLogs((prev) => appendLogEntries(prev, entries));
   }, []);
 
-  const { getUnitForNode, runProcess, getDemoItemForKind } = useOopLabProcess(
+  const { getUnitForNode, runProcess } = useOopLabProcess(
     factory,
     appendLogs,
     () => setRenderVersion((n) => n + 1),
   );
 
+  const flashWorking = useCallback((nodeId: string, ok: boolean) => {
+    if (!ok) return;
+    if (workingTimerRef.current) {
+      clearTimeout(workingTimerRef.current);
+    }
+    setWorkingNodeId(nodeId);
+    workingTimerRef.current = setTimeout(() => {
+      setWorkingNodeId(null);
+      workingTimerRef.current = null;
+    }, WORKING_MS);
+  }, []);
+
+  const runWithFeedback = useCallback(
+    (nodeId: string, item: string) => {
+      const outcome = runProcess(nodeId, item);
+      if (outcome && hoveredNodeIdRef.current === nodeId) {
+        setHoverHint((prev) =>
+          prev ? applyRunToHoverHint(prev, nodeId, outcome) : prev,
+        );
+      }
+      flashWorking(nodeId, outcome?.ok ?? false);
+      return outcome;
+    },
+    [flashWorking, runProcess],
+  );
+
+  const handleNodeHover = useCallback(
+    (nodeId: string, event: NodePointerEvent, anchorRect: HintAnchorRect) => {
+      hoveredNodeIdRef.current = nodeId;
+      const hint = buildHoverUnitHint(nodeId, event, anchorRect);
+      if (hint) setHoverHint(hint);
+    },
+    [],
+  );
+
+  const handleNodeHoverEnd = useCallback((nodeId: string) => {
+    if (hoveredNodeIdRef.current === nodeId) {
+      hoveredNodeIdRef.current = null;
+      setHoverHint(null);
+    }
+  }, []);
+
   const handleNodeClick = useCallback(
     (nodeId: string | null) => {
       if (nodeId === null) {
         setSelectedNodeId(null);
+        hoveredNodeIdRef.current = null;
+        setHoverHint(null);
         onConcreteSelect?.(null);
         return;
       }
 
+      setSelectedNodeId(nodeId);
+
       const infoText = NODE_INFO[nodeId];
       if (infoText) {
-        appendLogs([createLogEntry(`ℹ ${infoText}`, "info")]);
+        onConcreteSelect?.(null);
         return;
       }
 
       const kind = NODE_TO_UNIT[nodeId];
       if (!kind) return;
-
-      const demoItem = getDemoItemForKind(kind);
-      setSelectedNodeId(nodeId);
-      setSelectedPreset(demoItem as ProductPreset);
       const unit = getUnitForNode(nodeId);
       onConcreteSelect?.(unit?.deviceId ?? null);
-      runProcess(nodeId, demoItem);
+      runWithFeedback(nodeId, NODE_CLICK_ITEM);
     },
-    [appendLogs, getDemoItemForKind, getUnitForNode, onConcreteSelect, runProcess],
+    [getUnitForNode, onConcreteSelect, runWithFeedback],
   );
 
   const handlePresetClick = (preset: ProductPreset) => {
@@ -78,51 +129,27 @@ export default function OopLabView({
     if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
       appendLogs([
         createLogEntry(
-          "먼저 상속 뷰에서 초록색 구현 클래스(Conveyor / Robot / Inspection)를 클릭하세요.",
+          "먼저 다이어그램에서 구현 클래스(Conveyor / Robot / Inspection)를 선택하세요.",
           "warning",
         ),
       ]);
       return;
     }
-    const unitDemo = getDemoItemForNode(selectedNodeId);
-    const ownerNodeId = getDemoItemOwnerNodeId(selectedPreset);
-    if (
-      unitDemo &&
-      selectedPreset !== "P1" &&
-      selectedPreset !== unitDemo &&
-      ownerNodeId &&
-      ownerNodeId !== selectedNodeId
-    ) {
-      const ownerLabel =
-        OOP_CLASS_NODES.find((n) => n.id === ownerNodeId)?.label ?? ownerNodeId;
-      appendLogs([
-        createLogEntry(
-          `ℹ "${selectedPreset}"은(는) ${ownerLabel} 전용 실패 데모입니다. 현재 선택 클래스에서는 다른 키워드 검사가 적용됩니다.`,
-          "info",
-        ),
-      ]);
-    }
-    runProcess(selectedNodeId, selectedPreset);
+    const outcome = runProcess(selectedNodeId, selectedPreset);
+    flashWorking(selectedNodeId, outcome?.ok ?? false);
   };
 
-  const handleRunDemo = () => {
-    if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
-      appendLogs([
-        createLogEntry("먼저 상속 뷰에서 초록색 구현 클래스를 클릭하세요.", "warning"),
-      ]);
-      return;
-    }
-    const kind = NODE_TO_UNIT[selectedNodeId];
-    if (!kind) return;
-    const demoItem = getDemoItemForKind(kind);
-    setSelectedPreset(demoItem as ProductPreset);
-    runProcess(selectedNodeId, demoItem);
-  };
+  const selectedUnit = useMemo(() => {
+    if (!selectedNodeId) return null;
+    return getUnitForNode(selectedNodeId);
+  }, [getUnitForNode, selectedNodeId, renderVersion]);
+
+  const selectedUnitStatus = selectedUnit?.status ?? null;
 
   const handleStartSelected = () => {
     if (!selectedNodeId || !NODE_TO_UNIT[selectedNodeId]) {
       appendLogs([
-        createLogEntry("먼저 상속 뷰에서 초록색 구현 클래스를 클릭하세요.", "warning"),
+        createLogEntry("먼저 다이어그램에서 구현 클래스를 선택하세요.", "warning"),
       ]);
       return;
     }
@@ -144,20 +171,19 @@ export default function OopLabView({
 
   const handleReset = () => {
     if (!window.confirm("OOP Lab 세션을 리셋하시겠습니까?")) return;
+    if (workingTimerRef.current) clearTimeout(workingTimerRef.current);
     factory.reset();
     setLogs([]);
     setSelectedNodeId(null);
-    setSelectedPreset("P1");
+    setHoverHint(null);
+    hoveredNodeIdRef.current = null;
+    setWorkingNodeId(null);
     onConcreteSelect?.(null);
     setRenderVersion((n) => n + 1);
   };
 
   const selectedNode = useMemo(
     () => OOP_CLASS_NODES.find((n) => n.id === selectedNodeId) ?? null,
-    [selectedNodeId],
-  );
-  const unitDemoItem = useMemo(
-    () => (selectedNodeId ? getDemoItemForNode(selectedNodeId) : null),
     [selectedNodeId],
   );
   const canControlUnit = Boolean(selectedNodeId && NODE_TO_UNIT[selectedNodeId]);
@@ -170,36 +196,48 @@ export default function OopLabView({
           : "flex h-full min-h-0 flex-col overflow-hidden p-3 lg:p-4"
       }
     >
+      <ClickProcessHint
+        hint={hoverHint}
+        autoDismissMs={null}
+        onDismiss={() => {
+          hoveredNodeIdRef.current = null;
+          setHoverHint(null);
+        }}
+      />
+
       {!compact && (
         <p className="mb-2 shrink-0 text-xs text-slate-600 dark:text-slate-400">
-          같은 <code className="text-emerald-600 dark:text-emerald-400">process()</code> 호출 —
-          클래스마다 다른 결과(다형성).{" "}
-          <span className="font-medium text-emerald-700 dark:text-emerald-300">
-            초록 구현 카드를 클릭하면 오른쪽 실행 결과에 즉시 표시됩니다.
-          </span>
+          <strong>호버</strong>로 스펙 확인 · 초록 노드 <strong>클릭</strong> → P1{" "}
+          <code className="font-mono text-emerald-600 dark:text-emerald-400">process()</code>
+          (클릭 순서 자유 — 클래스별 차이 비교용). 실패 데모는 「추가 실험」.
+          공장 에너지 한도{" "}
+          <span className="font-mono">{factory.plantEnergy.limit.toLocaleString()}</span>
+          (대시보드 100과 별도).
         </p>
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[1fr_minmax(300px,36%)]">
-        <InheritanceView
+        <InheritanceDiagram
           selectedNodeId={selectedNodeId}
+          workingNodeId={workingNodeId}
+          onNodeHover={handleNodeHover}
+          onNodeHoverEnd={handleNodeHoverEnd}
           onSelectNode={handleNodeClick}
           compact={compact}
         />
         <OopSidePanel
           logs={logs}
           selectedPreset={selectedPreset}
-          unitDemoItem={unitDemoItem}
           selectedNode={selectedNode}
+          selectedUnitStatus={selectedUnitStatus}
           canControlUnit={canControlUnit}
           onClearSelection={() => handleNodeClick(null)}
           onPresetClick={handlePresetClick}
           onRunSelected={handleRunSelected}
-          onRunDemo={handleRunDemo}
           onStartSelected={handleStartSelected}
           onStopSelected={handleStopSelected}
           onReset={handleReset}
-          plantEnergy={`${factory.plantEnergy.total.toFixed(1)} / ${PLANT_ENERGY_LIMIT}`}
+          plantEnergy={`${factory.plantEnergy.total.toFixed(1)} / ${factory.plantEnergy.limit}`}
           compact={compact}
         />
       </div>

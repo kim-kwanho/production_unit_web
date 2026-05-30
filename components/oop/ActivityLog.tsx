@@ -68,22 +68,16 @@ function ActivityLog({
         aria-relevant="additions"
       >
         {entries.length === 0 ? (
-          <div className="space-y-1.5 text-slate-500 dark:text-slate-400">
-            <p className="font-medium text-slate-600 dark:text-slate-300">
-              아직 실행 결과가 없습니다
-            </p>
-            <p>
-              왼쪽 상속 뷰에서{" "}
-              <span className="font-medium text-emerald-700 dark:text-emerald-300">
-                초록색 구현 카드
-              </span>
-              (Conveyor / Robot / Inspection)를 클릭하세요.
-            </p>
-            <p className="text-[10px]">
-              클래스마다 전용 데모 item(Conveyor→P-JAM, Robot→P-HEAVY, Inspection→P-DEFECT)으로
-              process()가 실행되고 결과가 여기에 표시됩니다.
-            </p>
-          </div>
+          <ol className="list-inside list-decimal space-y-1.5 text-slate-600 dark:text-slate-300">
+            <li>
+              왼쪽 <span className="font-medium text-emerald-700 dark:text-emerald-300">초록 구현 노드</span>{" "}
+              클릭 (Conveyor / Robot / Inspection)
+            </li>
+            <li>클래스마다 다른 로그 확인 (P-JAM / P-HEAVY / P-DEFECT)</li>
+            <li className="text-[10px] text-slate-500 dark:text-slate-400">
+              다른 item은 아래 「추가 실험」에서 재실행
+            </li>
+          </ol>
         ) : (
           <ul className="space-y-1">
             {entries.map((entry, i) => (

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import type { NodePointerEvent } from "./oopClickHint";
 
 export interface ClassMethodRef {
   name: string;
@@ -25,8 +26,10 @@ export interface ClassNodeData {
 interface ClassNodeProps {
   node: ClassNodeData;
   selected: boolean;
-  onClick: (node: ClassNodeData) => void;
-  /** interface/abstract — 계약·상속 메서드 1줄 미리보기 */
+  isWorking?: boolean;
+  onPointerEnter: (node: ClassNodeData, event: NodePointerEvent) => void;
+  onPointerLeave: (node: ClassNodeData) => void;
+  onPointerUp: (node: ClassNodeData, event: NodePointerEvent) => void;
   showMethods?: boolean;
 }
 
@@ -38,22 +41,32 @@ function nodeFill(kind: ClassNodeData["kind"], selected: boolean): string {
     : "var(--oop-node-concrete-fill)";
 }
 
-function ClassNode({ node, selected, onClick, showMethods = false }: ClassNodeProps) {
-  const stroke = selected
-    ? "#22c55e"
-    : node.kind === "interface"
-      ? "var(--oop-node-interface-stroke, #7c3aed)"
-      : node.kind === "abstract"
-        ? "var(--oop-node-abstract-stroke, #2563eb)"
-        : "#10b981";
+function ClassNode({
+  node,
+  selected,
+  isWorking = false,
+  onPointerEnter,
+  onPointerLeave,
+  onPointerUp,
+  showMethods = false,
+}: ClassNodeProps) {
+  const stroke = isWorking
+    ? "#16a34a"
+    : selected
+      ? "#22c55e"
+      : node.kind === "interface"
+        ? "var(--oop-node-interface-stroke, #7c3aed)"
+        : node.kind === "abstract"
+          ? "var(--oop-node-abstract-stroke, #2563eb)"
+          : "#10b981";
   const dash = node.kind === "interface" ? "6 4" : undefined;
-  const strokeWidth = selected ? 3.5 : 2;
-  const showPulse = node.kind === "concrete" && !selected;
+  const strokeWidth = isWorking || selected ? 3.5 : 2;
+  const showPulse = node.kind === "concrete" && !selected && !isWorking;
 
   const isRunnable = node.kind === "concrete";
   const hint = isRunnable
-    ? "클릭하여 process() 실행"
-    : "정보 전용 — 클릭 시 설명 표시";
+    ? "호버 → 스펙 · 클릭 → P1 실행"
+    : "호버 → 설명";
 
   return (
     <g
@@ -61,11 +74,18 @@ function ClassNode({ node, selected, onClick, showMethods = false }: ClassNodePr
       role="button"
       tabIndex={0}
       aria-label={`${node.label} — ${hint}`}
-      onClick={() => onClick(node)}
+      onPointerEnter={(e) => onPointerEnter(node, e)}
+      onPointerLeave={() => onPointerLeave(node)}
+      onFocus={(e) => onPointerEnter(node, e)}
+      onBlur={() => onPointerLeave(node)}
+      onPointerUp={(e) => {
+        if (e.button !== 0) return;
+        onPointerUp(node, e);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onClick(node);
+          onPointerUp(node, e as unknown as NodePointerEvent);
         }
       }}
       style={isRunnable ? undefined : { opacity: 0.92 }}
@@ -151,6 +171,7 @@ function ClassNode({ node, selected, onClick, showMethods = false }: ClassNodePr
         </text>
       )}
       {node.kind === "concrete" &&
+        !isWorking &&
         node.overriddenMethods.some((m) => m.overridden) && (
           <text
             x={node.x + node.width / 2}
@@ -160,9 +181,32 @@ function ClassNode({ node, selected, onClick, showMethods = false }: ClassNodePr
             fontSize={9}
             fontWeight={600}
           >
-            ★ process() override
+            ★ process() 오버라이드
           </text>
         )}
+      {isWorking && node.kind === "concrete" && (
+        <g className="oop-node-working" pointerEvents="none">
+          <rect
+            x={node.x + 4}
+            y={node.y + node.height - 28}
+            width={node.width - 8}
+            height={18}
+            rx={4}
+            fill="#16a34a"
+            opacity={0.9}
+          />
+          <text
+            x={node.x + node.width / 2}
+            y={node.y + node.height - 15}
+            textAnchor="middle"
+            fill="white"
+            fontSize={10}
+            fontWeight={700}
+          >
+            ▶ P1 처리 중…
+          </text>
+        </g>
+      )}
       <text
         x={node.x + node.width / 2}
         y={node.y + node.height - 10}
@@ -170,8 +214,13 @@ function ClassNode({ node, selected, onClick, showMethods = false }: ClassNodePr
         fill="var(--oop-node-sub-fill)"
         fontSize={10}
         fontWeight={500}
+        pointerEvents="none"
       >
-        {node.kind === "concrete" ? "클릭하여 실행" : "정보 전용"}
+        {isWorking
+          ? "작업 중"
+          : node.kind === "concrete"
+            ? "호버 스펙 · 클릭 P1"
+            : "호버 → 설명"}
       </text>
     </g>
   );

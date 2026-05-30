@@ -105,28 +105,8 @@ export const NODE_DEMO_ITEMS: Record<ConcreteUnitKind, string> = {
   inspection: "P-DEFECT",
 };
 
-/** 구현 클래스 nodeId → 해당 클래스 전용 데모 item (없으면 null) */
-export function getDemoItemForNode(nodeId: string): string | null {
-  const kind = NODE_TO_UNIT[nodeId];
-  if (!kind) return null;
-  return NODE_DEMO_ITEMS[kind];
-}
-
-/** 데모 item이 어느 구현 클래스 전용인지 (다형성 비교·경고용) */
-export function getDemoItemOwnerNodeId(item: string): string | null {
-  for (const [nodeId, kind] of Object.entries(NODE_TO_UNIT)) {
-    if (NODE_DEMO_ITEMS[kind] === item) return nodeId;
-  }
-  return null;
-}
-
-/** 클릭마다 P1(성공) ↔ 실패 데모 item을 번갈아 사용 (alternateDemoItems 옵션 전용) */
-export function pickAlternatingDemoItem(
-  kind: ConcreteUnitKind,
-  clickIndex: number,
-): string {
-  return clickIndex % 2 === 0 ? "P1" : NODE_DEMO_ITEMS[kind];
-}
+/** 다이어그램 클릭 시 기본 item — 정상 가동·에너지/효율 차이 비교용 */
+export const NODE_CLICK_ITEM = "P1";
 
 export const NODE_INFO: Record<string, string> = {
   adt: "ProductionUnitADT — 인터페이스 역할. start/stop/process/efficiency/info 계약을 정의합니다.",
