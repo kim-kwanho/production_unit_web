@@ -9,8 +9,8 @@ import {
   type UnitStatus,
 } from "./types";
 
-/** ADT를 구현하는 생산 유닛 공통 클래스 */
-export class ProductionUnit implements IProductionUnit {
+/** ADT를 구현하는 생산 유닛 공통 클래스 (추상 클래스 — 직접 인스턴스화 불가) */
+export abstract class ProductionUnit implements IProductionUnit {
   private _deviceId: string;
   private _status: UnitStatus;
   private _unitCount: number;
@@ -136,6 +136,11 @@ export class ProductionUnit implements IProductionUnit {
     };
   }
 
+  /**
+   * 이 유닛의 처리 건수를 공장 전체 누적 에너지로 나눈 값.
+   * ⚠️ plantEnergy는 라인 전체가 공유하므로 유닛 단독 효율이 아닌
+   *    "공장 전체 에너지 대비 이 유닛의 기여도" 를 나타냅니다.
+   */
   efficiency(): number {
     const pt = this.plantEnergy.total;
     if (pt <= 0) {
