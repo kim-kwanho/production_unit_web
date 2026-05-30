@@ -1,13 +1,20 @@
-import { useCallback, useRef } from "react";
-import {
-  NODE_DEMO_ITEMS,
-  NODE_TO_UNIT,
-  pickAlternatingDemoItem,
-} from "@/components/oop/oopLabModel";
+import { useCallback } from "react";
+import { NODE_TO_UNIT } from "@/components/oop/oopLabModel";
 import { createLogEntry, logFromProcess } from "@/domain/log";
 import type { OopLabFactory } from "@/domain/oopLabFactory";
 import type { IProductionUnit } from "@/domain/ProductionUnitADT";
-import { RUNNING, type ConcreteUnitKind, type LogEntry } from "@/domain/types";
+import type { LogEntry } from "@/domain/types";
+
+export interface ProcessRunOutcome {
+  ok: boolean;
+  item: string;
+  deviceId: string;
+  stationType: string;
+  energyDelta: number;
+  energyPerProcess: number;
+  expEff: number | null;
+  processedDelta: number;
+}
 
 export function snapshotUnit(u: IProductionUnit) {
   const info = u.info();
@@ -30,6 +37,8 @@ export function snapshotUnit(u: IProductionUnit) {
     stationType: u.stationType,
     processedCount: u.processedCount,
     expEff: toNum(kv.exp_eff),
+    unitCount: toNum(kv.unit_count),
+    energyPerCycle: toNum(kv.energy_per_cycle),
   };
 }
 
@@ -48,42 +57,16 @@ export function useOopLabProcess(
   factory: OopLabFactory,
   appendLogs: (entries: LogEntry[]) => void,
   onAfterProcess?: () => void,
-  options?: { alternateDemoItems?: boolean },
 ) {
-  const demoClickRef = useRef(0);
-
   const getUnitForNode = useCallback(
     (nodeId: string) => getUnitForNodeFromFactory(factory, nodeId),
     [factory],
   );
 
-  const getDemoItemForKind = useCallback(
-    (kind: ConcreteUnitKind) => {
-      if (!options?.alternateDemoItems) {
-        return NODE_DEMO_ITEMS[kind];
-      }
-      const item = pickAlternatingDemoItem(kind, demoClickRef.current);
-      demoClickRef.current += 1;
-      return item;
-    },
-    [options?.alternateDemoItems],
-  );
-
   const runProcess = useCallback(
-    (nodeId: string, item: string) => {
+    (nodeId: string, item: string): ProcessRunOutcome | null => {
       const unit = getUnitForNode(nodeId);
-      if (!unit) return;
-
-      const autoStartLogs: LogEntry[] = [];
-      if (unit.status !== RUNNING) {
-        unit.start();
-        autoStartLogs.push(
-          createLogEntry(
-            `[${unit.deviceId}] 정지 상태 — 데모 실행을 위해 가동을 시작했습니다.`,
-            "info",
-          ),
-        );
-      }
+      if (!unit) return null;
 
       const plantBefore = factory.plantEnergy.total;
       const before = snapshotUnit(unit);
@@ -93,9 +76,12 @@ export function useOopLabProcess(
 
       const processedDelta = after.processedCount - before.processedCount;
       const energyDelta = plantAfter - plantBefore;
+      const energyPerProcess =
+        before.energyPerCycle != null && before.unitCount != null
+          ? before.energyPerCycle * before.unitCount
+          : energyDelta;
 
       appendLogs([
-        ...autoStartLogs,
         createLogEntry(
           `━━ 변화(diff): ${before.deviceId} (${before.stationType}) ━━`,
           "info",
@@ -115,9 +101,20 @@ export function useOopLabProcess(
         ...logFromProcess(result.messages),
       ]);
       onAfterProcess?.();
+
+      return {
+        ok: result.ok,
+        item,
+        deviceId: unit.deviceId,
+        stationType: unit.stationType,
+        energyDelta,
+        energyPerProcess,
+        expEff: after.expEff,
+        processedDelta,
+      };
     },
     [appendLogs, factory.plantEnergy, getUnitForNode, onAfterProcess],
   );
 
-  return { getUnitForNode, runProcess, getDemoItemForKind, snapshotUnit };
+  return { getUnitForNode, runProcess, snapshotUnit };
 }
