@@ -1,11 +1,13 @@
 "use client";
 
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { LogEntry } from "@/domain/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEffect, useMemo, useRef, useState } from "react";
 
 interface MessageLogProps {
   entries: LogEntry[];
+  /** flex-1로 남은 공간을 채우고 내부만 스크롤 */
+  fill?: boolean;
 }
 
 const LEVEL_STYLES: Record<LogEntry["level"], string> = {
@@ -15,7 +17,7 @@ const LEVEL_STYLES: Record<LogEntry["level"], string> = {
   error: "text-red-600 dark:text-red-400",
 };
 
-export default function MessageLog({ entries }: MessageLogProps) {
+function MessageLog({ entries, fill = false }: MessageLogProps) {
   const [level, setLevel] = useState<LogEntry["level"] | "all">("all");
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,19 +29,22 @@ export default function MessageLog({ entries }: MessageLogProps) {
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    // keep pinned to bottom if user hasn't scrolled up
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     if (nearBottom) el.scrollTop = el.scrollHeight;
   }, [filtered.length]);
 
+  const heightClass = fill ? "min-h-0 flex-1" : "h-[320px]";
+
   return (
-    <Card className="flex min-h-[200px] flex-1 flex-col">
-      <CardHeader>
+    <Card className={`flex ${heightClass} flex-col overflow-hidden`}>
+      <CardHeader className="shrink-0 px-3 py-2">
         <div>
-          <CardTitle>실행 로그</CardTitle>
-          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-            라인은 왼쪽→오른쪽(유닛 순서)으로 처리되며, 로그는 그 순서대로 누적됩니다.
-          </p>
+          <CardTitle className="text-xs">실행 로그</CardTitle>
+          {!fill && (
+            <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              라인은 왼쪽→오른쪽(유닛 순서)으로 처리되며, 로그는 그 순서대로 누적됩니다.
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-1 text-[11px]">
           {(["all", "info", "success", "warning", "error"] as const).map((k) => (
@@ -66,7 +71,7 @@ export default function MessageLog({ entries }: MessageLogProps) {
           ))}
         </div>
       </CardHeader>
-      <CardContent className="min-h-0 flex-1 p-3">
+      <CardContent className="min-h-0 flex-1 p-2">
         <div ref={scrollerRef} className="h-full overflow-y-auto font-mono text-xs">
           {filtered.length === 0 ? (
             <p className="text-slate-500 dark:text-slate-400">
@@ -89,3 +94,5 @@ export default function MessageLog({ entries }: MessageLogProps) {
     </Card>
   );
 }
+
+export default memo(MessageLog);

@@ -8,7 +8,6 @@ const PAGE_TITLES: Record<string, string> = {
   "/": "Smart Factory OOP",
   "/oop-lab": "OOP Lab",
   "/dashboard": "Factory Dashboard",
-  "/studio": "OOP + Dashboard (Studio)",
 };
 
 export default function AppHeader() {

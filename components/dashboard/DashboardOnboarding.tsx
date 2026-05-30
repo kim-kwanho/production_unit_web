@@ -4,7 +4,7 @@ import OnboardingPanel from "@/components/ui/onboarding-panel";
 
 export default function DashboardOnboarding() {
   return (
-    <div className="mb-4">
+    <div>
       <OnboardingPanel
         storageKey="sf-dashboard-onboarding-done"
         title="Dashboard — 1분 사용법"

@@ -1,7 +1,20 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import EfficiencyDonut from "@/components/dashboard/EfficiencyDonut";
+import { appendLogEntries } from "@/lib/logBuffer";
+
+const EfficiencyDonut = dynamic(
+  () => import("@/components/dashboard/EfficiencyDonut"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-32 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">
+        효율 차트 로딩…
+      </div>
+    ),
+  },
+);
 import MessageLog from "@/components/dashboard/MessageLog";
 import PixelLineMap from "@/components/dashboard/PixelLineMap";
 import UnitControlPanel from "@/components/dashboard/UnitControlPanel";
@@ -9,6 +22,7 @@ import DashboardOnboarding from "@/components/dashboard/DashboardOnboarding";
 import { Button } from "@/components/ui/button";
 import { createDashboardFactory } from "@/domain/dashboardFactory";
 import { createLogEntry, logFromProcess } from "@/domain/log";
+import { processPipeline } from "@/domain/pipeline";
 import {
   PLANT_ENERGY_LIMIT,
   UNIT_COUNT_MAX,
@@ -65,7 +79,7 @@ export default function DashboardView({
   }, [runHistory]);
 
   const appendLogs = useCallback((entries: LogEntry[]) => {
-    setLogs((prev) => [...prev, ...entries]);
+    setLogs((prev) => appendLogEntries(prev, entries));
   }, []);
 
   const sleep = (ms: number) =>
@@ -105,33 +119,39 @@ export default function DashboardView({
 
     const energyBefore = factory.plantEnergy.total;
     const finishedBefore = getFinishedOnLine();
-    let okAll = true;
+    const { results, failedUnitId } = processPipeline(factory.line, item);
+    const okAll = failedUnitId === null;
 
-    for (const unit of factory.line) {
+    for (let i = 0; i < factory.line.length; i++) {
+      const unit = factory.line[i];
+      const result = results[i];
       if (runIdRef.current !== runId) return;
       setActiveUnitId(unit.deviceId);
-      setActiveProgress(0);
 
-      await sleep(120);
-      if (runIdRef.current !== runId) return;
-      setActiveProgress(0.35);
-      await sleep(180);
-      if (runIdRef.current !== runId) return;
-      setActiveProgress(0.7);
-      await sleep(220);
-      if (runIdRef.current !== runId) return;
+      if (compact) {
+        setActiveProgress(0.5);
+        await sleep(280);
+        if (runIdRef.current !== runId) return;
+      } else {
+        setActiveProgress(0);
+        await sleep(120);
+        if (runIdRef.current !== runId) return;
+        setActiveProgress(0.35);
+        await sleep(180);
+        if (runIdRef.current !== runId) return;
+        setActiveProgress(0.7);
+        await sleep(220);
+        if (runIdRef.current !== runId) return;
+      }
       setActiveProgress(1);
 
-      const result = unit.process(item);
       appendLogs([...logFromProcess(result.messages)]);
 
-      if (!result.ok) {
-        okAll = false;
-        setLastFailedUnitId(unit.deviceId);
-        break;
+      if (failedUnitId === unit.deviceId) {
+        setLastFailedUnitId(failedUnitId);
       }
 
-      await sleep(220);
+      await sleep(compact ? 120 : 220);
     }
 
     const energyAfter = factory.plantEnergy.total;
@@ -229,29 +249,41 @@ export default function DashboardView({
   const [panel, setPanel] = useState<"control" | "metrics" | "log">("control");
 
   return (
-    <div className={compact ? "flex h-full flex-col p-3" : "flex h-full flex-col p-6"}>
-      {showOnboarding && <DashboardOnboarding />}
+    <div
+      className={
+        compact
+          ? "flex h-full min-h-0 flex-col overflow-hidden p-3"
+          : "flex h-full min-h-0 flex-col overflow-hidden p-3 lg:p-4"
+      }
+    >
+      {showOnboarding && (
+        <div className="mb-2 shrink-0">
+          <DashboardOnboarding />
+        </div>
+      )}
       {!compact && (
-        <header className="mb-4 flex items-start justify-between">
-          <div>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Factory Dashboard — 생산 라인 상태와 처리 결과를 한 화면에서 확인합니다.
-            </p>
-          </div>
-          <Button variant="secondary" onClick={handleReset}>
+        <header className="mb-2 flex shrink-0 items-center justify-between gap-3">
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Factory Dashboard — 생산 라인 상태와 처리 결과를 한 화면에서 확인합니다.
+          </p>
+          <Button variant="secondary" size="sm" onClick={handleReset}>
             세션 리셋
           </Button>
         </header>
       )}
 
-      <PixelLineMap
-        line={factory.line}
-        lastFailedUnitId={lastFailedUnitId}
-        activeUnitId={activeUnitId}
-        activeItemLabel={activeItemLabel}
-        activeProgress={activeProgress}
-        highlightUnitId={highlightUnitId}
-      />
+      <div className="shrink-0">
+        <PixelLineMap
+          line={factory.line}
+          lineSyncVersion={renderVersion}
+          lastFailedUnitId={lastFailedUnitId}
+          activeUnitId={activeUnitId}
+          activeItemLabel={activeItemLabel}
+          activeProgress={activeProgress}
+          highlightUnitId={highlightUnitId}
+          compact={compact}
+        />
+      </div>
 
       {compact ? (
         <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
@@ -301,7 +333,6 @@ export default function DashboardView({
                   onUnitCountChange={handleUnitCountChange}
                   energyAtLimit={energyAtLimit}
                   plantEnergyLabel={plantLabel}
-                  studioMinimal
                 />
               </div>
             )}
@@ -325,32 +356,38 @@ export default function DashboardView({
           </div>
         </div>
       ) : (
-        <div className="mt-3 grid flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
-          <UnitControlPanel
-            line={factory.line}
-            productInput={productInput}
-            addUnitKind={addUnitKind}
-            onAddUnitKindChange={setAddUnitKind}
-            canAddUnit={canAddUnit}
-            onProductInputChange={setProductInput}
-            onPresetSelect={setProductInput}
-            onStartAll={handleStartAll}
-            onStopAll={handleStopAll}
-            onRunPipeline={handleRunPipeline}
-            onAddUnit={handleAddUnit}
-            onUnitCountChange={handleUnitCountChange}
-            energyAtLimit={energyAtLimit}
-            plantEnergyLabel={plantLabel}
-          />
-
-          <div className="flex flex-col gap-3">
-            <EfficiencyDonut
-              percent={efficiency.percent}
-              finished={efficiency.finished}
-              plant={efficiency.plant}
+        <div className="mt-2 grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden lg:grid-cols-2 lg:gap-3">
+          <div className="min-h-0 overflow-hidden">
+            <UnitControlPanel
+              fill
+              line={factory.line}
+              productInput={productInput}
+              addUnitKind={addUnitKind}
+              onAddUnitKindChange={setAddUnitKind}
+              canAddUnit={canAddUnit}
+              onProductInputChange={setProductInput}
+              onPresetSelect={setProductInput}
+              onStartAll={handleStartAll}
+              onStopAll={handleStopAll}
+              onRunPipeline={handleRunPipeline}
+              onAddUnit={handleAddUnit}
+              onUnitCountChange={handleUnitCountChange}
               energyAtLimit={energyAtLimit}
+              plantEnergyLabel={plantLabel}
             />
-            <MessageLog entries={logs} />
+          </div>
+
+          <div className="flex min-h-0 flex-col gap-2 overflow-hidden lg:gap-3">
+            <div className="shrink-0">
+              <EfficiencyDonut
+                compact
+                percent={efficiency.percent}
+                finished={efficiency.finished}
+                plant={efficiency.plant}
+                energyAtLimit={energyAtLimit}
+              />
+            </div>
+            <MessageLog entries={logs} fill />
           </div>
         </div>
       )}
