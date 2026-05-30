@@ -4,24 +4,26 @@ import { PLANT_ENERGY_LIMIT } from "./types";
 export class PlantEnergyContext {
   private _total = 0;
 
+  constructor(private readonly _limit: number = PLANT_ENERGY_LIMIT) {}
+
   get total(): number {
     return this._total;
   }
 
   get limit(): number {
-    return PLANT_ENERGY_LIMIT;
+    return this._limit;
   }
 
   get remaining(): number {
-    return Math.max(0, PLANT_ENERGY_LIMIT - this._total);
+    return Math.max(0, this._limit - this._total);
   }
 
   canAfford(step: number): boolean {
-    return this._total + step <= PLANT_ENERGY_LIMIT;
+    return this._total + step <= this._limit;
   }
 
   get isAtLimit(): boolean {
-    return this._total >= PLANT_ENERGY_LIMIT;
+    return this._total >= this._limit;
   }
 
   add(step: number): void {

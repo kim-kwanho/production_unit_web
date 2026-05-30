@@ -1,13 +1,7 @@
 import { processMsg } from "./message";
 import { PlantEnergyContext } from "./PlantEnergyContext";
 import type { IProductionUnit } from "./ProductionUnitADT";
-import {
-  PLANT_ENERGY_LIMIT,
-  RUNNING,
-  STOPPED,
-  type ProcessResult,
-  type UnitStatus,
-} from "./types";
+import { RUNNING, STOPPED, type ProcessResult, type UnitStatus } from "./types";
 
 /** ADT를 구현하는 생산 유닛 공통 클래스 (추상 클래스 — 직접 인스턴스화 불가) */
 export abstract class ProductionUnit implements IProductionUnit {
@@ -100,9 +94,10 @@ export abstract class ProductionUnit implements IProductionUnit {
     const step = this.energyForOneProcess();
 
     if (!this.plantEnergy.canAfford(step)) {
+      const cap = this.plantEnergy.limit;
       return this.blockedResult(
-        `공장 에너지 한도(${PLANT_ENERGY_LIMIT}) 초과로 '${item}' 처리를 취소합니다. ` +
-          `(현재 ${this.plantEnergy.total.toFixed(1)}/${PLANT_ENERGY_LIMIT.toFixed(1)}, 필요 ${step.toFixed(1)})`,
+        `공장 에너지 한도(${cap}) 초과로 '${item}' 처리를 취소합니다. ` +
+          `(현재 ${this.plantEnergy.total.toFixed(1)}/${cap.toFixed(1)}, 필요 ${step.toFixed(1)})`,
         "error",
       );
     }
@@ -129,7 +124,7 @@ export abstract class ProductionUnit implements IProductionUnit {
       ok: true,
       messages: [
         processMsg(
-          `  [${this._deviceId}] '${item}' 완료 (공장 ${this.plantEnergy.total.toFixed(1)}/${PLANT_ENERGY_LIMIT.toFixed(0)}, 남음 ${this.plantEnergy.remaining.toFixed(1)})`,
+          `  [${this._deviceId}] '${item}' 완료 (공장 ${this.plantEnergy.total.toFixed(1)}/${this.plantEnergy.limit.toFixed(0)}, 남음 ${this.plantEnergy.remaining.toFixed(1)})`,
           "success",
         ),
       ],
