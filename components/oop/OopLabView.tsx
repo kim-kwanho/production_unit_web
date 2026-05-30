@@ -207,14 +207,17 @@ export default function OopLabView({
       />
 
       {!compact && (
-        <p className="mb-2 shrink-0 text-xs text-slate-600 dark:text-slate-400">
-          <strong>호버</strong>로 스펙 확인 · 초록 노드 <strong>클릭</strong> → P1{" "}
-          <code className="font-mono text-emerald-600 dark:text-emerald-400">process()</code>
-          (클릭 순서 자유 — 클래스별 차이 비교용). 실패 데모는 「추가 실험」.
-          공장 에너지 한도{" "}
-          <span className="font-mono">{factory.plantEnergy.limit.toLocaleString()}</span>
-          (대시보드 100과 별도).
-        </p>
+        <ul className="mb-2 flex shrink-0 flex-wrap gap-1.5 text-[11px] text-slate-700 dark:text-slate-300">
+          <li className="list-none rounded-md border border-emerald-300/80 bg-emerald-50/90 px-2 py-1 font-medium text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-100">
+            클릭 → P1 실행
+          </li>
+          <li className="list-none rounded-md border border-slate-200 bg-slate-50/90 px-2 py-1 dark:border-slate-600 dark:bg-slate-900/50">
+            가까이 → 스펙
+          </li>
+          <li className="list-none rounded-md border border-amber-200/80 bg-amber-50/80 px-2 py-1 dark:border-amber-800/50 dark:bg-amber-950/30">
+            실패 → 추가 실험
+          </li>
+        </ul>
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[1fr_minmax(300px,36%)]">

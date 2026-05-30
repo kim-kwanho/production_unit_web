@@ -117,14 +117,18 @@ export default function ClickProcessHint({
         >
           {!compact && (
             <p className="text-[10px] font-medium uppercase tracking-wide opacity-70">
-              유닛 스펙 · 실행
+              유닛 정보
             </p>
           )}
           <p className={`font-semibold leading-snug ${compact ? "text-xs" : "mt-1 text-xs"}`}>
             {hint.content.title}
           </p>
           {hint.content.subtitle && (
-            <p className="mt-0.5 text-[11px] font-medium leading-snug text-inherit/90">
+            <p
+              className={`mt-0.5 leading-snug text-inherit/90 ${
+                compact ? "text-[11px] font-semibold text-emerald-800 dark:text-emerald-200" : "text-[11px] font-medium"
+              }`}
+            >
               {hint.content.subtitle}
             </p>
           )}
@@ -135,6 +139,11 @@ export default function ClickProcessHint({
                 compact ? "mt-1.5" : "mt-2 px-2.5 py-2"
               }`}
             >
+              {hint.content.specCaption && (
+                <dt className="mb-0.5 text-[9px] font-medium uppercase tracking-wide opacity-60">
+                  {hint.content.specCaption}
+                </dt>
+              )}
               {specRows.map((row) => (
                 <div
                   key={row.label}
@@ -151,9 +160,9 @@ export default function ClickProcessHint({
 
           {hint.content.lines.length > 0 && (
             <p
-              className={`text-[11px] font-medium leading-snug ${
+              className={`text-[11px] font-semibold leading-snug ${
                 specRows.length > 0 ? "mt-1.5 border-t border-current/25 pt-1.5" : "mt-1"
-              } ${compact && specRows.length === 0 ? "" : "font-mono"}`}
+              }`}
             >
               {hint.content.lines.join(" · ")}
             </p>

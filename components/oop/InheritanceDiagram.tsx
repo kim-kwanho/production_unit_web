@@ -25,9 +25,8 @@ function centerTop(node: ClassNodeData) {
 
 function FlowGuide({ compact }: { compact?: boolean }) {
   const steps = [
-    { n: "①", label: "노드 호버", sub: "유닛 스펙" },
-    { n: "②", label: "초록 노드 클릭", sub: "P1 가동" },
-    { n: "③", label: "실행 결과", sub: "다형성 로그" },
+    { n: "①", label: "초록 노드 클릭", sub: "P1 실행" },
+    { n: "②", label: "실행 결과", sub: "다형성 로그" },
   ];
 
   return (
@@ -79,13 +78,10 @@ function DiagramLegend({ compact }: { compact?: boolean }) {
       </span>
       <span className="inline-flex items-center gap-1">
         <span className="inline-block h-2.5 w-4 rounded-sm border border-emerald-500 bg-emerald-200 dark:bg-emerald-800" />
-        호버 스펙 · 클릭 P1
+        구현 클래스
       </span>
       <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
         ★ <span className="font-mono">process()</span> 오버라이드
-      </span>
-      <span className="text-slate-500 dark:text-slate-400">
-        (실패 데모: 추가 실험에서 P-JAM 등)
       </span>
     </div>
   );

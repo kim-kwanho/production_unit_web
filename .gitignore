@@ -36,3 +36,14 @@ next-env.d.ts
 # docs (school submissions)
 *.docx
 ~$*.docx
+
+# local build artifacts
+build.log
+
+# assignment PDFs at repo root (docs/uml/*.pdf 는 제출용으로 커밋 가능)
+/*.pdf
+
+# IDE / OS
+Thumbs.db
+*.swp
+.cursor/
