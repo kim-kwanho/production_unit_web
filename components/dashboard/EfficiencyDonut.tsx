@@ -66,7 +66,7 @@ function EfficiencyDonut({
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
             <span
-              className={`text-2xl font-bold ${
+              className={`font-bold ${compact ? "text-xl" : "text-2xl"} ${
                 energyAtLimit
                   ? "text-red-600 dark:text-red-400"
                   : "text-slate-900 dark:text-white"

@@ -30,6 +30,7 @@ interface UnitControlPanelProps {
   onAddUnit: () => void;
   onUnitCountChange: (deviceId: string, delta: number) => void;
   energyAtLimit: boolean;
+  pipelineRunning?: boolean;
   plantEnergyLabel: string;
 }
 
@@ -48,6 +49,7 @@ export default function UnitControlPanel({
   onAddUnit,
   onUnitCountChange,
   energyAtLimit,
+  pipelineRunning = false,
   plantEnergyLabel,
 }: UnitControlPanelProps) {
   return (
@@ -111,12 +113,12 @@ export default function UnitControlPanel({
               onAddUnitKindChange(e.target.value as AddUnitKind)
             }
             disabled={!canAddUnit}
-            aria-label="추가할 유닛 종류 선택"
+            aria-label="Select unit type to add"
             className="min-w-[10rem]"
           >
-            <option value="conveyor">컨베이어</option>
-            <option value="robot_arm">로봇암</option>
-            <option value="inspection">검사기</option>
+            <option value="conveyor">Conveyor</option>
+            <option value="robot_arm">Robot Arm</option>
+            <option value="inspection">Inspection</option>
           </Select>
           <Button
             onClick={onAddUnit}
@@ -166,16 +168,18 @@ export default function UnitControlPanel({
           />
           <Button
             onClick={onRunPipeline}
-            disabled={energyAtLimit}
+            disabled={energyAtLimit || pipelineRunning}
             title={
-              energyAtLimit
-                ? "공장 에너지 한도에 도달했습니다"
-                : "라인 파이프라인 실행"
+              pipelineRunning
+                ? "파이프라인 실행 중입니다"
+                : energyAtLimit
+                  ? "공장 에너지 한도에 도달했습니다"
+                  : "라인 파이프라인 실행"
             }
             variant="primary"
             size="md"
           >
-          파이프라인 실행
+            {pipelineRunning ? "실행 중…" : "파이프라인 실행"}
           </Button>
         </div>
 

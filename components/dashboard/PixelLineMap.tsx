@@ -16,6 +16,8 @@ interface PixelLineMapProps {
   activeUnitId?: string | null;
   activeItemLabel?: string | null;
   activeProgress?: number;
+  /** activeUnitId 타일의 처리 단계 */
+  activePhase?: "working" | "blocked" | "failed" | null;
   highlightUnitId?: string | null;
   compact?: boolean;
 }
@@ -52,6 +54,7 @@ function PixelLineMap({
   activeUnitId,
   activeItemLabel,
   activeProgress = 0,
+  activePhase = null,
   highlightUnitId,
   compact = false,
 }: PixelLineMapProps) {
@@ -86,8 +89,17 @@ function PixelLineMap({
             const color = tileColor(unit, lastFailedUnitId);
             const isActive = activeUnitId === unit.deviceId;
             const isHighlighted = highlightUnitId === unit.deviceId && !isActive;
-            const statusLabel =
-              isActive ? "작업 중" : unit.status === RUNNING ? "가동" : "정지";
+            const statusLabel = isActive
+              ? activePhase === "failed"
+                ? "실패"
+                : activePhase === "working"
+                  ? "작업 중"
+                  : unit.status === RUNNING
+                    ? "가동"
+                    : "정지"
+              : unit.status === RUNNING
+                ? "가동"
+                : "정지";
             const tileSize = compact ? "h-12 w-12" : "h-14 w-14";
             return (
               <div key={`${unit.deviceId}-${index}`} className="flex items-center">
@@ -100,7 +112,7 @@ function PixelLineMap({
                   <div
                     className={`absolute bottom-0 left-0 right-0 h-1 rounded-b-md ${BAR_CLASS[color]}`}
                   />
-                  {isActive && activeItemLabel && (
+                  {isActive && activeItemLabel && activePhase === "working" && (
                     <div className="absolute left-1 top-1 rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                       {activeItemLabel}
                     </div>
@@ -111,9 +123,14 @@ function PixelLineMap({
                       compact ? "h-8 w-8" : "h-9 w-9"
                     }`}
                   />
-                  {isActive && (
+                  {isActive && activePhase === "working" && (
                     <div className="absolute right-1 top-1 rounded bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
                       {Math.round(activeProgress * 100)}%
+                    </div>
+                  )}
+                  {isActive && activePhase === "failed" && (
+                    <div className="absolute right-1 top-1 rounded bg-red-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      실패
                     </div>
                   )}
                 </div>
