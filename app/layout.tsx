@@ -31,7 +31,7 @@ export default function RootLayout({
               <AppSidebar />
               <div className="flex min-w-0 flex-1 flex-col">
                 <AppHeader />
-                <main className="flex-1 overflow-auto">
+                <main className="flex-1 overflow-hidden">
                   <div className="mx-auto w-full max-w-[1400px]">
                     {children}
                   </div>

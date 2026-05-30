@@ -4,7 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -26,11 +26,11 @@ function readExpanded(): boolean {
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [expanded, setExpanded] = useState(true);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setExpanded(readExpanded());
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     localStorage.setItem(STORAGE_KEY, expanded ? "1" : "0");
     document.documentElement.style.setProperty(
       "--sidebar-width",

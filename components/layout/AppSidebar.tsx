@@ -61,6 +61,7 @@ export default function AppSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               title={!expanded ? item.label : undefined}
               className={`flex items-center gap-3 rounded-lg transition-colors ${
                 expanded ? "px-3 py-3" : "justify-center p-2.5"
