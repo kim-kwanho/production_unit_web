@@ -32,7 +32,7 @@ export default function DashboardOnboarding({ compact = false }: { compact?: boo
   useEffect(() => {
     if (!open) return;
 
-    const onPointerDown = (event: MouseEvent) => {
+    const onClickOutside = (event: MouseEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false);
         localStorage.setItem(STORAGE_OPEN, "0");
@@ -46,10 +46,10 @@ export default function DashboardOnboarding({ compact = false }: { compact?: boo
       }
     };
 
-    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("click", onClickOutside);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("click", onClickOutside);
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
