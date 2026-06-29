@@ -1,9 +1,16 @@
 # Smart Factory OOP
 
-과제 1 Python OOP 도메인을 TypeScript로 포팅한 Next.js 웹 앱입니다.  
+[![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Vercel](https://img.shields.io/badge/Live-Vercel-000000?logo=vercel&logoColor=white)](https://production-unit-web.vercel.app)
+
+Python OOP 도메인을 TypeScript/Next.js로 포팅한 **스마트 팩토리** 웹 애플리케이션입니다.  
 **OOP Lab**에서 상속·오버라이딩·`process()` 다형성을 확인하고, **Factory Dashboard**에서 생산 라인(파이프라인)을 운영합니다.
 
-과제 1 Python 프로젝트: [`../production_unit_project`](../production_unit_project)
+🌐 **Live:** [https://production-unit-web.vercel.app](https://production-unit-web.vercel.app)
+
+과제 1 Python 프로젝트: [`production_unit_project`](https://github.com/kim-kwanho/production_unit_project) (private)
 
 ## 요구 사항
 
